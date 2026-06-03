@@ -174,3 +174,9 @@ cython_debug/
 
 .DS_Store
 
+.server.pid
+.uv-cache/
+server.log
+server.error.log
+backend/pm.db
+
