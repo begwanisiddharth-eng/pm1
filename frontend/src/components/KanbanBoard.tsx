@@ -53,15 +53,17 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
     const { active, over } = event;
     setActiveCardId(null);
     if (!over || active.id === over.id) return;
+    const prev = board;
     const next: BoardData = {
       ...board,
       columns: moveCard(board.columns, active.id as string, over.id as string),
     };
     setBoard(next);
-    void persist(board, next);
+    void persist(prev, next);
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
+    const prev = board;
     const next: BoardData = {
       ...board,
       columns: board.columns.map((col) =>
@@ -69,7 +71,7 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
       ),
     };
     setBoard(next);
-    void persist(board, next);
+    void persist(prev, next);
   };
 
   const handleAddCard = (columnId: string, title: string, details: string) => {
@@ -206,7 +208,10 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
                   <KanbanColumn
                     key={column.id}
                     column={column}
-                    cards={column.cardIds.map((cardId) => board.cards[cardId])}
+                    cards={column.cardIds.flatMap((cardId) => {
+                      const card = board.cards[cardId];
+                      return card ? [card] : [];
+                    })}
                     onRename={handleRenameColumn}
                     onAddCard={handleAddCard}
                     onDeleteCard={handleDeleteCard}

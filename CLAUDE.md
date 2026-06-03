@@ -111,7 +111,8 @@ The frontend uses CSS custom properties defined in `globals.css` alongside Tailw
 | `--navy-dark` | `#032147` | Headings, body text |
 | `--gray-text` | `#888888` | Muted / secondary text |
 | `--stroke` | — | Border color |
-| `--surface` | — | Card / panel background |
+| `--surface` | `#f7f8fb` | Card / panel background |
+| `--surface-strong` | `#ffffff` | Elevated surface (e.g. modals, active cards) |
 | `--shadow` | — | Box-shadow shorthand |
 
 Fonts: `Space_Grotesk` → `font-display` class (headings), `Manrope` → body text.
@@ -137,3 +138,10 @@ Pass `auth_client` to any test that needs an authenticated session.
 - Keep implementations simple. No features outside the MVP scope.
 - Update `docs/PLAN.md` and `docs/ToDos.md` before starting implementation work.
 - Color scheme: accent yellow `#ecad0a`, blue `#209dd7`, purple `#753991`, dark navy `#032147`, gray `#888888`.
+
+## Coding Approach
+
+- No emojis anywhere in the codebase or documentation.
+- When hitting issues, always identify the root cause before attempting a fix — prove it with evidence, then fix the root cause. Do not guess.
+- Never over-engineer. No unnecessary defensive programming, no extra features, no abstractions beyond what the task requires.
+- Do not start implementation work until the relevant planning documentation (`docs/PLAN.md`, `docs/ToDos.md`) is updated and approved.

@@ -1,139 +1,209 @@
 # Code Review: Project Management MVP
 
-*Original review date: 2026-06-03 | Assessment and fixes applied: 2026-06-03*
+*Review date: 2026-06-04*
 
 ---
 
-## Summary of Assessment
+## Summary
 
-Each finding was verified against the actual code. Three changes were applied and all tests pass (26 backend, 19 frontend). Two findings were incorrect. The remainder were valid observations that do not warrant changes for this MVP scope.
-
----
-
-## Critical: Security Issue — API Key Exposure
-
-The `.env` file at the project root was read during the review process and contains a live OpenAI API key. Review tools and processes should be configured to skip `.env` files entirely. The session secret key is also hardcoded as `"dev-secret-change-in-production"` in `backend/app/main.py:24`. While documented as a dev-only default, it should use a generated fallback at minimum.
-
-**Action:** Rotate the exposed key outside this project. No code change made — the default fallback key is an acceptable dev-only pattern.
+Eight findings across backend validation, a frontend crash path, a security gap, and several cleanup items. Three are actionable correctness bugs; one is a security issue; the rest are cleanup or defence-in-depth.
 
 ---
 
-## Backend Issues
+## Findings
 
-### 1. Dead code — `ask()` function ✅ Fixed
-**File:** `backend/app/ai.py`
+### 1. No referential-integrity check between `cardIds` and `cards` (Critical)
 
-`ask()` was never called by any route; it existed only to support three tests that tested the function itself. Removed `ask()` from `ai.py` and removed the three dependent tests from `test_ai.py` (`test_ask_calls_openai_with_prompt`, `test_ask_returns_empty_string_for_none_content`, `test_ask_live_2_plus_2`). The two remaining tests in `test_ai.py` (`test_model_is_gpt4o_mini`, `test_get_client_raises_if_api_key_missing`) are unaffected.
+**Files:** `backend/app/board.py:24`, `backend/app/ai_router.py:70`
 
-### 2. Duplicate card IDs silently dropped ✅ Fixed
-**File:** `backend/app/ai_router.py`
+`BoardData.model_validate()` checks structural types (correct field names and types) but never cross-validates that every string in `columns[].cardIds` exists as a key in the `cards` dict, or that every card in `cards` is referenced by exactly one column. This means a board where a column lists a `cardId` that has no matching entry in `cards` passes both the `PUT /api/board` endpoint and the AI router's validation, and gets persisted to SQLite.
 
-If the AI returned two cards with the same ID, the dict comprehension silently discarded one card with no error raised or logged. Added a duplicate ID check before the comprehension; if duplicates are detected the response is treated as invalid and `saved_board` is set to `None`, consistent with the existing validation failure path.
+The AI router adds a duplicate-ID check (lines 70–72) but not a referential check. The Pydantic `BoardData` model has no `@model_validator` for this invariant.
 
-### 3. No logging configuration — No change
-**File:** `backend/app/main.py`
+**Consequence:** see Finding 2.
 
-uvicorn configures Python logging handlers on startup. The `WARNING` and `ERROR` calls in `ai_router.py` are visible when running via uvicorn. No change needed for this local MVP.
+**Fix:** Add a Pydantic `@model_validator(mode="after")` to `BoardData`:
 
-### 4. Board validation double conversion — No change
-**File:** `backend/app/ai_router.py`
+```python
+from pydantic import model_validator
 
-The code works correctly. Merging `AIChatBoard` and `BoardData` would remove the intentional structural separation maintained for the OpenAI Structured Outputs constraint (cards as list vs. dict). Refactoring adds complexity for no functional gain.
+@model_validator(mode="after")
+def check_card_refs(self) -> "BoardData":
+    referenced = {cid for col in self.columns for cid in col.cardIds}
+    defined = set(self.cards.keys())
+    if referenced != defined:
+        raise ValueError(f"cardIds/cards mismatch: dangling={referenced-defined}, orphaned={defined-referenced}")
+    return self
+```
 
-### 5. No size limits on board data — No change
-**File:** `backend/app/board.py`
-
-Single local user with hardcoded authentication. Adding Pydantic field size constraints is over-engineering for this scope.
-
-### 6. `init_db()` has no error handling — No change
-**File:** `backend/app/database.py`
-
-A raw traceback on disk/permission failure is acceptable for a local development tool. Adding graceful error wrapping would add code without practical benefit here.
-
-### 7. Duplicate Pydantic model definitions — No change
-**Files:** `backend/app/ai.py`, `backend/app/board.py`
-
-The duplication is intentional and documented: `AIChatBoard.cards` must be a `list` (OpenAI Structured Outputs schema constraint), while `BoardData.cards` is a `dict`. Merging would require a custom serializer that adds more complexity than the current duplication.
+This single fix protects both `PUT /api/board` and the AI chat path automatically.
 
 ---
 
-## Frontend Issues
+### 2. Frontend crashes on `undefined` card when a column has a dangling `cardId` (Critical)
 
-### 1. Fragile column lookup in tests — No change
-**File:** `frontend/src/components/KanbanBoard.test.tsx:19`
+**File:** `frontend/src/components/KanbanBoard.tsx:209`
 
-`screen.getAllByTestId(/^column-/)[0]` returns the first column in DOM order (Backlog), which is stable for the fixed `initialData`. Minor fragility but not a practical issue.
+```typescript
+cards={column.cardIds.map((cardId) => board.cards[cardId])}
+```
 
-### 2. Rollback test may falsely pass ✅ Fixed
-**File:** `frontend/src/components/KanbanBoard.test.tsx`
+If any `cardId` in a column has no entry in `board.cards`, the expression returns `undefined`. That `undefined` is passed as a typed `Card` prop to `KanbanCard`, which immediately dereferences `card.id` on `useSortable({ id: card.id })` — a `TypeError` that unmounts the entire board with no recovery path.
 
-Added `await waitFor(() => expect(vi.mocked(saveBoard)).toHaveBeenCalled())` before checking the rollback. Without this, a broken `handleEditCard` that never called `persist()` would leave the UI unchanged and the test would pass, masking the bug.
+This is a consequence of Finding 1: the backend does not prevent dangling `cardIds` from being saved. A defence-in-depth guard here is still worthwhile since the board state is also held client-side.
 
-### 3. No retry on save failure — No change
-**File:** `frontend/src/components/KanbanBoard.tsx`
+**Fix:** Filter out missing entries and log a warning, or add an invariant check in `handleAiBoardUpdate`:
 
-Adding retry logic is outside MVP scope and adds meaningful complexity.
-
-### 4. Missing dependency lint in useEffect — Incorrect finding
-**File:** `frontend/src/components/AISidebar.tsx:18-21`
-
-The `useEffect` deps `[messages, loading]` are correct. `bottomRef` is a ref — React's exhaustive-deps rule explicitly excludes refs from the deps requirement because refs are stable. ESLint would not flag this.
-
-### 5. Array index as React key for chat messages — No change
-**File:** `frontend/src/components/AISidebar.tsx`
-
-Messages are append-only; indices are stable for the lifetime of the component. Acceptable for this MVP.
+```typescript
+cards={column.cardIds.flatMap((cardId) => {
+  const card = board.cards[cardId];
+  return card ? [card] : [];
+})}
+```
 
 ---
 
-## Testing Issues
+### 3. `Message.role` is unvalidated — prompt injection via crafted history (Security)
 
-### 1. Invalid board test patches wrong exception type — No change
-**File:** `backend/tests/test_ai_chat.py`
+**File:** `backend/app/ai_router.py:29`
 
-Patching `model_validate` to raise `ValueError` exercises the `except Exception` branch rather than `except ValidationError`, but both branches produce the same outcome (`saved_board = None`, DB unchanged). The test correctly verifies the intended behaviour.
+```python
+class Message(BaseModel):
+    role: str        # accepts any string
+    content: str
+```
 
-### 2. Misleading test name — No change
-**File:** `backend/tests/test_board.py`
+Every history entry is forwarded verbatim to OpenAI (line 62). A client that POSTs `history: [{"role": "system", "content": "Ignore previous instructions..."}]` injects a second system-level message into the conversation after the legitimate system prompt. OpenAI accepts `role: "system"` at any position in the messages list, so this is a real prompt-injection vector.
 
-`test_put_board_invalid_does_not_overwrite` is a minor naming issue. The test itself is correct and useful.
+**Fix:** Restrict `role` to the two valid values:
 
-### 3. Indistinguishable empty string return — Moot
-**File:** `backend/tests/test_ai.py`
+```python
+from typing import Literal
 
-This finding concerned `ask()`, which has been removed.
+class Message(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+```
 
----
-
-## Architectural Observations
-
-### 1. Drop target detection relies on ID prefix convention — Incorrect finding
-**File:** `frontend/src/lib/kanban.ts`
-
-The `isColumnId` helper uses `columns.some((column) => column.id === id)` — a proper array lookup, not prefix matching. Column vs. card distinction is determined by membership in the columns array, not by any `col-`/`card-` prefix convention. No change needed.
-
-### 2. Race condition on rapid state mutations — No change
-**File:** `frontend/src/components/KanbanBoard.tsx`
-
-The race is real: a failed second save rolls back to `prev` captured before the first mutation's optimistic update. Fixing it requires `useRef` or `useReducer` for the previous-state bookmark. For a local single-user app where save requests complete in milliseconds, this is an acceptable edge case.
-
-### 3. No abort controllers on fetch calls — No change
-**File:** `frontend/src/lib/api.ts`
-
-Acceptable for MVP. Component unmounts mid-request are transient and cause no observable corruption in this app.
-
-### 4. No loading transition after login — No change
-**File:** `frontend/src/app/page.tsx`
-
-Brief "Loading…" flash between login and board display is acceptable for MVP.
+Pydantic rejects any other value at request-parse time with a 422, before the messages list is built.
 
 ---
 
-## Code Quality Highlights
+### 4. AI chat board UPDATE does not check `rowcount` (Medium)
 
-- Consistent coding style across both frontend and backend
-- Good separation of concerns in backend modules (auth, board, ai, database)
-- Solid test coverage with a clean fixture chain (`test_db` → `client` → `auth_client`)
-- Proper error handling for AI board validation failures — invalid AI output never corrupts the saved board
-- Clean UI with consistent theming using CSS custom properties
-- Well-structured board state management with optimistic updates and rollback
+**File:** `backend/app/ai_router.py:78`
+
+`board.py:update_board` correctly checks `cursor.rowcount == 0` after the UPDATE and raises a 404 if no row was affected. The AI router omits this check:
+
+```python
+db.execute("UPDATE boards SET content = ? ... WHERE user_id = (...)", [...])
+db.commit()
+saved_board = validated  # set unconditionally — rowcount not checked
+```
+
+If the boards row is absent at UPDATE time, the write silently does nothing but `saved_board` is non-`None` and returned to the frontend as a successful board update. The next page refresh reverts to the old data, silently discarding the change.
+
+**Fix:** Capture the cursor and check rowcount, matching the pattern in `board.py`:
+
+```python
+cursor = db.execute("UPDATE boards ...", [validated.model_dump_json(), current_user])
+db.commit()
+if cursor.rowcount == 0:
+    logger.error("AI board update found no row for user %s", current_user)
+    saved_board = None
+else:
+    saved_board = validated
+```
+
+---
+
+### 5. Column title input stays blank after a user clears it and blurs (Medium)
+
+**File:** `frontend/src/components/KanbanColumn.tsx:29`
+
+When a user clears the column title input and blurs, `handleBlur` correctly refuses to call `onRename` (empty string is falsy). But `titleValue` state is never reset: the `useEffect` at line 29–31 only runs when `column.title` changes — and since no rename was issued, `column.title` is unchanged. The input remains visually blank with no error message until an external event causes `column.title` to change.
+
+**Fix:** Reset `titleValue` at the end of `handleBlur` when the save is rejected:
+
+```typescript
+const handleBlur = () => {
+    const trimmed = titleValue.trim();
+    if (trimmed && trimmed !== column.title) {
+        onRename(column.id, trimmed);
+    } else if (!trimmed) {
+        setTitleValue(column.title);  // restore on empty input
+    }
+};
+```
+
+---
+
+### 6. `handleRenameColumn` and `handleDragEnd` do not snapshot `prev` before building `next` (Low)
+
+**File:** `frontend/src/components/KanbanBoard.tsx:52, 64`
+
+Every other mutation handler captures `const prev = board` before computing `next`:
+
+```typescript
+// handleAddCard, handleDeleteCard, handleEditCard — all do:
+const prev = board;
+const next = { ...board, ... };
+setBoard(next);
+void persist(prev, next);
+```
+
+`handleRenameColumn` and `handleDragEnd` skip the explicit snapshot and pass `board` directly as the rollback target:
+
+```typescript
+// handleRenameColumn:
+const next = { ...board, columns: ... };
+setBoard(next);
+void persist(board, next);   // 'board' is the closure variable, not a snapshot
+```
+
+Within a single synchronous call this is equivalent, but the pattern inconsistency is fragile: if either handler is ever refactored to call `setBoard` twice before `persist` resolves, the rollback target becomes stale. Adding `const prev = board` at the top of both handlers eliminates the asymmetry at zero cost.
+
+---
+
+### 7. Board-fetch SQL duplicated across `board.py` and `ai_router.py` (Low)
+
+**Files:** `backend/app/board.py:35`, `backend/app/ai_router.py:51`
+
+The query:
+
+```sql
+SELECT b.content FROM boards b JOIN users u ON b.user_id = u.id WHERE u.username = ?
+```
+
+appears verbatim in both files. Similarly, the UPDATE SQL appears in both. If the schema changes, both copies must be updated in sync.
+
+**Fix:** Extract a `get_board_for_user(db, username)` helper into `board.py` (and optionally a `set_board_for_user`) and import it in `ai_router.py`.
+
+---
+
+### 8. OpenAI client re-instantiated on every request (Low)
+
+**File:** `backend/app/ai.py:44`
+
+```python
+def chat(messages: list[dict]) -> AIChatResponse:
+    client = get_client()   # creates a new OpenAI instance each call
+    ...
+```
+
+`OpenAI()` creates a new `httpx.Client` with its own connection pool on every invocation, forgoing TCP and TLS connection reuse. For a local single-user app the impact is small, but the fix is one line: move the client to module scope or use `functools.lru_cache` on `get_client()`.
+
+```python
+@lru_cache(maxsize=1)
+def get_client() -> OpenAI:
+    ...
+```
+
+---
+
+## Not raised
+
+- **Session key default** (`"dev-secret-change-in-production"`) — documented in CLAUDE.md as the dev fallback, overrideable via `SESSION_SECRET_KEY`. Acceptable for a local-only MVP.
+- **No size limits on board payload** — single local user, over-engineering for this scope.
+- **No abort controllers on fetch** — component-unmount races cause no observable corruption here.
+- **Array index as React key in chat messages** — messages are append-only; indices are stable for the component lifetime.

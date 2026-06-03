@@ -1,13 +1,14 @@
 import logging
 import sqlite3
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ValidationError
 
 from app.ai import AIChatResponse
 from app.ai import chat as ai_chat
 from app.auth import get_current_user
-from app.board import BoardData
+from app.board import BoardData, _fetch_board_content, _save_board_content
 from app.database import get_db
 
 router = APIRouter(prefix="/api/ai")
@@ -27,7 +28,7 @@ _SYSTEM_PROMPT = (
 
 
 class Message(BaseModel):
-    role: str
+    role: Literal["user", "assistant"]
     content: str
 
 
@@ -47,14 +48,7 @@ def ai_chat_endpoint(
     current_user: str = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> ChatResponse:
-    row = db.execute(
-        "SELECT b.content FROM boards b JOIN users u ON b.user_id = u.id WHERE u.username = ?",
-        [current_user],
-    ).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Board not found")
-
-    board_json = row["content"]
+    board_json = _fetch_board_content(db, current_user)
     system_content = f"{_SYSTEM_PROMPT}\n\nCurrent board (JSON):\n{board_json}"
 
     messages: list[dict] = [{"role": "system", "content": system_content}]
@@ -75,16 +69,10 @@ def ai_chat_endpoint(
                 "cards": {c.id: c.model_dump() for c in ai_response.board.cards},
             }
             validated = BoardData.model_validate(board_dict)
-            db.execute(
-                """
-                UPDATE boards
-                SET content = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-                WHERE user_id = (SELECT id FROM users WHERE username = ?)
-                """,
-                [validated.model_dump_json(), current_user],
-            )
-            db.commit()
-            saved_board = validated
+            if _save_board_content(db, current_user, validated.model_dump_json()):
+                saved_board = validated
+            else:
+                logger.error("AI board update found no row for user %s", current_user)
         except ValidationError as exc:
             logger.warning("AI board validation failed: %s", exc)
             saved_board = None

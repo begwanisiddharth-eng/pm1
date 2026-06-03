@@ -34,6 +34,8 @@ export const KanbanColumn = ({
     const trimmed = titleValue.trim();
     if (trimmed && trimmed !== column.title) {
       onRename(column.id, trimmed);
+    } else if (!trimmed) {
+      setTitleValue(column.title);
     }
   };
 
