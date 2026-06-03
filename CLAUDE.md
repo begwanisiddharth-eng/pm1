@@ -71,10 +71,12 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 
 - `app/page.tsx` — root page; manages auth phase (`loading | unauthenticated | board-error | ready`)
 - `lib/api.ts` — all fetch calls (`getMe`, `login`, `logout`, `getBoard`, `saveBoard`, `chatWithBoard`)
-- `lib/kanban.ts` — `Card`, `Column`, `BoardData` types; default data; ID helpers; move helpers
-- `components/KanbanBoard.tsx` — owns board state; calls `saveBoard` after every change
-- `components/KanbanColumn.tsx` — column rendering, inline title editing, add card
+- `lib/kanban.ts` — `Card`, `Column`, `BoardData` types; default data; ID helpers; `moveCard` (handles same-column reorder and cross-column moves)
+- `components/KanbanBoard.tsx` — owns board state; drag-and-drop via `@dnd-kit/core` (`PointerSensor`, 6 px activation, `closestCorners`); all mutations follow: compute `next` → `setBoard(next)` → `void persist(next)`. AI updates are the exception — backend already saved during the AI call, so `handleAiBoardUpdate` skips `persist()`.
+- `components/KanbanColumn.tsx` — column rendering, inline title editing, delegates add-card to `NewCardForm`
 - `components/KanbanCard.tsx` — draggable card, delete, inline edit form (title + details)
+- `components/KanbanCardPreview.tsx` — read-only card shadow rendered inside `DragOverlay` while dragging
+- `components/NewCardForm.tsx` — toggle-open form (title required, details optional) used by `KanbanColumn`
 - `components/AISidebar.tsx` — chat history, input, send; calls `chatWithBoard`; applies board updates
 - `components/LoginForm.tsx` — login UI
 
@@ -89,11 +91,40 @@ type BoardData = {
 }
 ```
 
-The AI returns cards as a flat list (OpenAI schema constraint); `ai_router.py` converts to dict before saving.
+The AI returns cards as a flat list (OpenAI Structured Outputs schema constraint): `AIChatBoard.cards: list[AIChatCard]`. `ai_router.py` converts this to `{card.id: card.model_dump()}` before validating against `BoardData` and saving.
 
 ### Authentication
 
 Starlette `SessionMiddleware` with a signed cookie. `get_current_user` is a FastAPI dependency injected into protected routes. Session key defaults to `"dev-secret-change-in-production"` — override via `SESSION_SECRET_KEY` env var.
+
+### CSS Theming
+
+The frontend uses CSS custom properties defined in `globals.css` alongside Tailwind. Use these variables in `className` strings rather than raw hex values:
+
+| Variable | Hex | Role |
+|---|---|---|
+| `--accent-yellow` | `#ecad0a` | Accent / highlights |
+| `--primary-blue` | `#209dd7` | Primary actions, links |
+| `--secondary-purple` | `#753991` | Secondary actions |
+| `--navy-dark` | `#032147` | Headings, body text |
+| `--gray-text` | `#888888` | Muted / secondary text |
+| `--stroke` | — | Border color |
+| `--surface` | — | Card / panel background |
+| `--shadow` | — | Box-shadow shorthand |
+
+Fonts: `Space_Grotesk` → `font-display` class (headings), `Manrope` → body text.
+
+### Backend Test Fixture Chain
+
+Tests in `backend/tests/` use a three-level fixture chain:
+
+```python
+test_db   # tmp_path SQLite, seeded via init_db()
+client    # FastAPI TestClient with get_db overridden to use test_db
+auth_client  # client pre-logged-in as "user" / "password"
+```
+
+Pass `auth_client` to any test that needs an authenticated session.
 
 ## Key Constraints
 

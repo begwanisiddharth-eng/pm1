@@ -46,7 +46,7 @@ def update_board(
     current_user: str = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> BoardData:
-    db.execute(
+    cursor = db.execute(
         """
         UPDATE boards
         SET content = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
@@ -55,4 +55,6 @@ def update_board(
         [body.model_dump_json(), current_user],
     )
     db.commit()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Board not found")
     return body

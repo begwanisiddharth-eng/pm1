@@ -1,76 +1,72 @@
 # Code Review
 
-Reviewed on 2026-06-03. All 65 tests pass. The MVP is complete and well-structured. Findings are grouped by severity: **bugs** (would cause incorrect behavior), **risks** (likely to cause problems as the codebase grows), and **observations** (informational, no action needed).
+Reviewed on 2026-06-03. All 29 backend tests and 19 frontend unit tests pass.
+
+A first review was performed, risks were mitigated, and this document was updated to reflect the current state. Findings are grouped by severity: **bugs** (incorrect behavior), **risks** (likely to cause problems as the codebase grows), and **observations** (informational, no action needed). Mitigated items are marked **[Fixed]** with a brief description of the change.
 
 ---
 
 ## Bugs
 
-None found. All behavior under test is correct.
+### 1. [Fixed] Board-fetch failure on initial load showed the login form instead of the error state (`frontend/src/app/page.tsx`)
+
+The outer `.catch()` was shared between `getMe()` and `getBoard()`. A `getBoard()` rejection on initial load set the phase to `"unauthenticated"`, showing the login form to an already-authenticated user.
+
+**Fix:** Added an inner `.catch(() => setPhase("board-error"))` directly on the `getBoard()` promise, matching what `handleLogin` already did. The outer catch now only fires if `getMe()` itself throws.
 
 ---
 
 ## Risks
 
-### 1. Silent failure when AI board validation fails (`backend/app/ai_router.py:81`)
+### 2. [Fixed] Silent failure when AI board validation fails (`backend/app/ai_router.py`)
 
-```python
-except (ValidationError, Exception):
-    saved_board = None
-```
+`except (ValidationError, Exception)` was effectively `except Exception` — `ValidationError` is already a subclass. Errors were swallowed with no logging.
 
-`except (ValidationError, Exception)` is effectively `except Exception` — `ValidationError` is already a subclass of `Exception`. The intent (don't corrupt the saved board) is correct, but the broad catch with no logging means any unexpected error here is invisible. If the AI returns a structurally valid but semantically wrong board, validation passes and bad data is saved. If something else crashes in the try block, it silently returns `board: null` with no trace.
-
-Suggestion: log the exception before continuing, and tighten the catch to the specific types that are actually expected (`ValidationError`, `json.JSONDecodeError`).
+**Fix:** Split into two separate `except` clauses. `ValidationError` logs a `WARNING`; any unexpected exception logs an `ERROR` with full traceback via `exc_info=True`. The `logging` module is used so output flows through uvicorn's log handler.
 
 ---
 
-### 2. Optimistic UI with no rollback on save failure (`frontend/src/components/KanbanBoard.tsx:38-45`)
+### 3. [Fixed] Optimistic UI with no rollback on save failure (`frontend/src/components/KanbanBoard.tsx`)
 
-```typescript
-const persist = async (next: BoardData) => {
-  try {
-    await saveBoard(next);
-    setSaveError(null);
-  } catch {
-    setSaveError("Changes could not be saved. Please try again.");
-  }
-};
-```
+When `saveBoard()` failed, the UI showed an error banner but the local state remained at the failed-to-persist version. On reload the board reverted silently, causing the user to lose changes they thought were saved.
 
-Board state updates immediately in the UI (`setBoard(next)`) and `persist()` is called fire-and-forget with `void persist(next)`. If the save fails, the user sees an error banner but the UI shows state that was never persisted. On page reload, the board reverts. This is a real UX inconsistency.
-
-For MVP this is acceptable, but the next step up would be rolling back `setBoard` to the previous state on error, or at minimum making the error banner more prominent with a "Reload" button.
+**Fix:** `persist(prev, next)` now takes both the prior and next board states. On `catch`, `setBoard(prev)` rolls the UI back to the last successfully-saved state before showing the error banner. All five mutation handlers pass `board` as `prev` at call time (before `setBoard(next)` runs). A test covering the rollback path was added to `KanbanBoard.test.tsx`.
 
 ---
 
-### 3. Seed data duplicated in three places
+### 4. [Fixed] Duplicate test fixtures across backend test files
 
-The default board content appears identically in:
-- `backend/app/database.py` (`_SEED_BOARD`)
-- `frontend/src/lib/kanban.ts` (`initialData`)
-- `frontend/tests/kanban.spec.ts` (`SEED_BOARD`)
+`test_db`, `client`, and `auth_client` were defined identically in both `test_board.py` and `test_ai_chat.py`.
 
-These must be kept in sync manually. The frontend `initialData` is no longer used by the running app (the board loads from the backend), but it is used by unit tests as a convenient fixture. If the seed shape ever changes, all three locations need updating, and a mismatch will be silent until a test fails for an unrelated reason.
-
----
-
-### 4. Duplicate test fixtures across files (`backend/tests/`)
-
-The `test_db`, `client`, and `auth_client` fixtures are defined identically in both `test_board.py` and `test_ai_chat.py`. If the fixture logic needs to change (e.g., enabling WAL mode, adding a row factory setting), it must be updated in both files. These belong in a shared `conftest.py`.
+**Fix:** Created `backend/tests/conftest.py` with the shared `test_db` / `client` / `auth_client` fixture chain (isolated tmp SQLite, `get_db` override, pre-logged-in client). Both `test_board.py` and `test_ai_chat.py` now rely on conftest. `test_main.py` retains its own simpler local fixtures (no DB override) since those tests check auth against the real seeded DB.
 
 ---
 
 ### 5. No session secret rotation path (`backend/app/main.py:25-28`)
 
 ```python
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET_KEY", "dev-secret-change-in-production"),
-)
+secret_key=os.getenv("SESSION_SECRET_KEY", "dev-secret-change-in-production")
 ```
 
-The fallback `"dev-secret-change-in-production"` is used whenever the env var is absent, including in all tests. This is fine for a local MVP, but worth noting: if `SESSION_SECRET_KEY` is ever rotated, all existing sessions are immediately invalidated. There's no documented mechanism to handle this. The current design makes a future rotation safe (one line of config), which is good.
+The fallback key is used whenever the env var is absent, including in all tests. This is fine for a local MVP. If `SESSION_SECRET_KEY` is ever rotated, all existing sessions are immediately invalidated — no grace-period mechanism exists. The current single-env-var design makes a future rotation straightforward.
+
+*No code change made — acceptable for MVP.*
+
+---
+
+### 6. [Fixed] No conversation history length limit (`backend/app/ai_router.py`)
+
+History from the client was forwarded to OpenAI without any bound, allowing a very long session to send an arbitrarily large token payload.
+
+**Fix:** Added `_MAX_HISTORY_MESSAGES = 40` (20 conversation turns). The history is sliced with `body.history[-_MAX_HISTORY_MESSAGES:]` before building the messages list. The current user message is always appended in full regardless.
+
+---
+
+### 7. [Fixed] `pytest` and `httpx` in production dependencies (`backend/pyproject.toml`)
+
+`pytest` (a test runner) and `httpx` (only needed for `TestClient` in tests) were listed under `[project] dependencies`, causing them to install in any production environment.
+
+**Fix:** Moved both to `[dependency-groups] dev`. `uv` includes dev groups automatically in the project environment, so `uv run pytest` continues to work unchanged.
 
 ---
 
@@ -80,52 +76,93 @@ The fallback `"dev-secret-change-in-production"` is used whenever the env var is
 
 The separation is clear throughout: `app/ai.py` owns only the OpenAI client and response schemas; `app/ai_router.py` owns the HTTP handling and board persistence logic. Frontend API calls are all centralized in `src/lib/api.ts` with no fetch calls scattered across components. The `BoardData` Pydantic model in `board.py` is the single source of truth for the stored shape on the backend.
 
-### AI card list→dict conversion is correct and documented (`backend/app/ai_router.py:66-68`)
+---
 
-```python
-board_dict = {
-    "columns": [c.model_dump() for c in ai_response.board.columns],
-    "cards": {c.id: c.model_dump() for c in ai_response.board.cards},
-}
-```
+### [Fixed] `PUT /api/board` now verifies that the UPDATE affected a row (`backend/app/board.py`)
 
-OpenAI's Structured Outputs doesn't support `dict[str, ...]` schema at the top level, so `AIChatBoard.cards` is a list. The router converts it to the dict shape expected by `BoardData` before validation and storage. The comment in `ai.py` explains the constraint. This is the right approach.
+Previously the cursor's `rowcount` was not checked, so a missing board row would silently return HTTP 200 without saving.
 
-### `handleAiBoardUpdate` correctly skips `persist()` (`frontend/src/components/KanbanBoard.tsx:120-124`)
+**Fix:** The cursor is captured from `db.execute()` and `rowcount == 0` raises a 404. In practice the board row always exists after `init_db`, so this path is unreachable in normal operation — but the endpoint now correctly surfaces the problem if it ever occurs.
 
-The AI endpoint saves the validated board to the database before responding. The frontend correctly applies the returned board to state without calling `saveBoard()` again. The comment makes the reasoning explicit. This avoids a redundant round-trip and a potential double-write race.
+---
+
+### [Fixed] Silent discard when saving a card with a blank title (`frontend/src/components/KanbanCard.tsx`)
+
+If the user cleared the title and clicked Save, the form closed silently and the original title was restored with no feedback.
+
+**Fix:** `handleSave` now guards with `if (!trimmed) { setTitleError(true); return; }`, keeping the form open and rendering a `"Title is required."` alert (`role="alert"`) beneath the input. The error clears on any input change or on Cancel.
+
+---
+
+### Seed data duplicated in three places
+
+The default board content appears identically in `backend/app/database.py` (`_SEED_BOARD`), `frontend/src/lib/kanban.ts` (`initialData`), and `frontend/tests/kanban.spec.ts` (`SEED_BOARD`). The frontend copies are used as test fixtures — `initialData` is no longer used at runtime (the board always loads from the backend).
+
+*No code change made — consolidating across the stack boundary would add meaningful complexity for MVP. If the seed shape changes, all three must be updated.*
+
+---
+
+### AI card list→dict conversion is correct and documented (`backend/app/ai_router.py`)
+
+OpenAI's Structured Outputs doesn't support `dict[str, ...]` at the schema level, so `AIChatBoard.cards` is a list. The router converts it to the dict shape expected by `BoardData` before validation and storage. The comment in `ai.py` explains the constraint.
+
+---
+
+### `handleAiBoardUpdate` correctly skips `persist()` (`frontend/src/components/KanbanBoard.tsx`)
+
+The AI endpoint saves the validated board to the database before responding. The frontend applies the returned board to state without calling `saveBoard()` again, avoiding a redundant round-trip and a potential double-write race. The comment makes the reasoning explicit.
+
+---
 
 ### Column rename does not save on every keystroke
 
-`KanbanColumn.tsx` only calls `onRename` (and therefore `persist()`) on `onBlur`, and only when the trimmed value has actually changed. This is the correct approach — one save per rename interaction rather than one per keypress.
+`KanbanColumn.tsx` only calls `onRename` (and therefore `persist()`) on `onBlur`, and only when the trimmed value has actually changed — one save per rename interaction rather than one per keypress.
 
-### Drag-and-drop disables during card editing (`frontend/src/components/KanbanCard.tsx:57`)
+---
+
+### Drag-and-drop listeners disabled during card editing (`frontend/src/components/KanbanCard.tsx`)
 
 ```typescript
 {...(isEditing ? {} : listeners)}
 ```
 
-Spreading an empty object rather than the dnd-kit listeners when the card is in edit mode correctly prevents the dragging gesture from interfering with text selection inside inputs. Clean solution.
+Spreading an empty object instead of the dnd-kit listeners when the card is in edit mode prevents the drag gesture from interfering with text selection inside inputs.
 
-### `createId()` is not cryptographically secure (`frontend/src/lib/kanban.ts:164-168`)
+---
 
-`Math.random()` is used for card IDs. This is fine — these IDs are display-layer identifiers with no security surface. They don't need to be unguessable, just unique enough to avoid UI collisions.
+### `createId()` is not cryptographically secure (`frontend/src/lib/kanban.ts`)
 
-### `get_client()` creates a new `OpenAI` instance on every AI call (`backend/app/ai.py:37-40`)
+`Math.random()` is used for card IDs. These are display-layer identifiers with no security surface — they need to be unique enough to avoid UI collisions, not unguessable.
 
-A new client is instantiated per request. The OpenAI SDK client is lightweight and doesn't hold a persistent connection, so this is not a meaningful cost for local single-user use. Not worth changing for MVP.
+---
 
-### `useMemo` on `board.cards` provides no benefit (`frontend/src/components/KanbanBoard.tsx:36`)
+### `get_client()` creates a new `OpenAI` instance on every AI call (`backend/app/ai.py`)
 
-```typescript
-const cardsById = useMemo(() => board.cards, [board.cards]);
+A new client is instantiated per request. The OpenAI SDK client is lightweight and holds no persistent connection, so this is not a meaningful cost for local single-user use.
+
+---
+
+### `AISidebar` uses array index as message `key` (`frontend/src/components/AISidebar.tsx`)
+
+```tsx
+{messages.map((msg, i) => <div key={i} ...>)}
 ```
 
-`board.cards` is already the object reference. `useMemo` here just returns it unchanged, since the dependency and the return value are the same object. The memo has no cost, but also no benefit. `const cardsById = board.cards;` is equivalent.
+Safe here because the message list is strictly append-only. Worth noting if any future feature removes or reorders messages.
 
-### `itsdangerous` and `httpx` listed as direct backend dependencies
+---
 
-`itsdangerous` is used internally by Starlette's `SessionMiddleware` — it's not imported directly by project code. `httpx` is only needed for FastAPI's `TestClient` in tests. Neither is harmful to list as a top-level dependency, but they're indirect. If a dedicated `[test]` extras group were added to `pyproject.toml`, `httpx` would belong there.
+### `logout()` network failure is not handled (`frontend/src/app/page.tsx`)
+
+If `logout()` rejects, the UI clears state and shows the login screen, but the server session remains active. On a local single-user colocated setup this is very unlikely. Acceptable for MVP.
+
+---
+
+### `itsdangerous` listed as a direct backend dependency
+
+Used internally by Starlette's `SessionMiddleware`, not imported by project code. Harmless to list directly but more accurately a transitive dependency of `fastapi`/`starlette`.
+
+---
 
 ### `StarletteDeprecationWarning` in backend tests
 
@@ -133,7 +170,9 @@ const cardsById = useMemo(() => board.cards, [board.cards]);
 StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
 ```
 
-This warning comes from Starlette's `TestClient`. It does not affect test correctness. Resolution requires Starlette (or FastAPI) to publish a stable API for the `httpx2` transition, which is not yet complete. No action needed now.
+Does not affect test correctness. Blocked on Starlette/FastAPI publishing a stable `httpx2` transition API.
+
+---
 
 ### Playwright tests reset board state in `beforeEach`
 
@@ -141,8 +180,10 @@ This warning comes from Starlette's `TestClient`. It does not affect test correc
 await page.request.put("/api/board", { data: SEED_BOARD });
 ```
 
-Board and auth state are explicitly reset before each e2e test group. This makes tests independent of run order and of each other, which is the right approach for tests against a stateful backend. The shared database (not a temp DB like the unit tests use) is a constraint of the e2e setup, and the reset pattern handles it correctly.
+Board and auth state are explicitly reset before each e2e test group, making tests independent of run order. The correct approach for tests against a stateful backend.
 
-### `initialData` export in `kanban.ts` is test-only
+---
 
-`initialData` is no longer used by the running application — the board always loads from the backend. It serves as a convenient fixture in unit tests. This is benign but slightly misleading: a reader of `kanban.ts` might assume it's used at runtime. A `// used by unit tests` comment or moving it to a test helper file would clarify intent.
+### `test_main.py` hits the real `pm.db`
+
+`test_main.py`'s `client` fixture does not override `get_db` — it uses the real database initialized via the app lifespan. Auth smoke tests run against the live DB. Safe because `init_db` is idempotent and those tests only verify session behavior. All board and AI tests use isolated tmp DBs via conftest.py.

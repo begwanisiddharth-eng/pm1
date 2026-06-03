@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +11,9 @@ from app.board import BoardData
 from app.database import get_db
 
 router = APIRouter(prefix="/api/ai")
+logger = logging.getLogger(__name__)
+
+_MAX_HISTORY_MESSAGES = 40  # 20 conversation turns (user + assistant pairs)
 
 _SYSTEM_PROMPT = (
     "You are a helpful Kanban board assistant. "
@@ -54,7 +58,7 @@ def ai_chat_endpoint(
     system_content = f"{_SYSTEM_PROMPT}\n\nCurrent board (JSON):\n{board_json}"
 
     messages: list[dict] = [{"role": "system", "content": system_content}]
-    for msg in body.history:
+    for msg in body.history[-_MAX_HISTORY_MESSAGES:]:
         messages.append({"role": msg.role, "content": msg.content})
     messages.append({"role": "user", "content": body.message})
 
@@ -78,8 +82,11 @@ def ai_chat_endpoint(
             )
             db.commit()
             saved_board = validated
-        except (ValidationError, Exception):
-            # Invalid board shape — return the message but do not corrupt saved board
+        except ValidationError as exc:
+            logger.warning("AI board validation failed: %s", exc)
+            saved_board = None
+        except Exception as exc:
+            logger.error("Unexpected error saving AI board update: %s", exc, exc_info=True)
             saved_board = None
 
     return ChatResponse(message=ai_response.message, board=saved_board)

@@ -105,6 +105,24 @@ describe("KanbanBoard", () => {
     );
   });
 
+  it("rolls back UI state when save fails", async () => {
+    vi.mocked(saveBoard).mockRejectedValueOnce(new Error("Network error"));
+    renderBoard();
+    const column = getFirstColumn();
+    const originalTitle = "Align roadmap themes";
+    await userEvent.click(
+      within(column).getByRole("button", { name: `Edit ${originalTitle}` })
+    );
+    const titleInput = within(column).getByLabelText("Card title");
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, "Will be rolled back");
+    await userEvent.click(within(column).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(within(column).getByText(originalTitle)).toBeInTheDocument()
+    );
+    expect(within(column).queryByText("Will be rolled back")).not.toBeInTheDocument();
+  });
+
   it("cancels card edit without saving", async () => {
     renderBoard();
     const column = getFirstColumn();

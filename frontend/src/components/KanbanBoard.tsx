@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -33,13 +33,14 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
     })
   );
 
-  const cardsById = useMemo(() => board.cards, [board.cards]);
+  const cardsById = board.cards;
 
-  const persist = async (next: BoardData) => {
+  const persist = async (prev: BoardData, next: BoardData) => {
     try {
       await saveBoard(next);
       setSaveError(null);
     } catch {
+      setBoard(prev);
       setSaveError("Changes could not be saved. Please try again.");
     }
   };
@@ -57,7 +58,7 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
       columns: moveCard(board.columns, active.id as string, over.id as string),
     };
     setBoard(next);
-    void persist(next);
+    void persist(board, next);
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
@@ -68,11 +69,12 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
       ),
     };
     setBoard(next);
-    void persist(next);
+    void persist(board, next);
   };
 
   const handleAddCard = (columnId: string, title: string, details: string) => {
     const id = createId("card");
+    const prev = board;
     const next: BoardData = {
       ...board,
       cards: {
@@ -86,10 +88,11 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
       ),
     };
     setBoard(next);
-    void persist(next);
+    void persist(prev, next);
   };
 
   const handleDeleteCard = (columnId: string, cardId: string) => {
+    const prev = board;
     const next: BoardData = {
       ...board,
       cards: Object.fromEntries(
@@ -102,10 +105,11 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
       ),
     };
     setBoard(next);
-    void persist(next);
+    void persist(prev, next);
   };
 
   const handleEditCard = (cardId: string, title: string, details: string) => {
+    const prev = board;
     const next: BoardData = {
       ...board,
       cards: {
@@ -114,7 +118,7 @@ export const KanbanBoard = ({ initialBoard, onLogout }: KanbanBoardProps) => {
       },
     };
     setBoard(next);
-    void persist(next);
+    void persist(prev, next);
   };
 
   const handleAiBoardUpdate = (aiBoard: BoardData) => {

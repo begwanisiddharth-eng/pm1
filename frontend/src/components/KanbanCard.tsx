@@ -14,6 +14,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDetails, setEditDetails] = useState(card.details);
+  const [titleError, setTitleError] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
@@ -32,15 +33,19 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
 
   const handleSave = () => {
     const trimmed = editTitle.trim();
-    if (trimmed) {
-      onEdit(card.id, trimmed, editDetails);
+    if (!trimmed) {
+      setTitleError(true);
+      return;
     }
+    onEdit(card.id, trimmed, editDetails);
+    setTitleError(false);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setEditTitle(card.title);
     setEditDetails(card.details);
+    setTitleError(false);
     setIsEditing(false);
   };
 
@@ -61,7 +66,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
         <div className="flex flex-col gap-3">
           <input
             value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
+            onChange={(e) => { setEditTitle(e.target.value); setTitleError(false); }}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") handleCancel();
@@ -70,6 +75,9 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
             aria-label="Card title"
             autoFocus
           />
+          {titleError && (
+            <p role="alert" className="text-xs text-red-600">Title is required.</p>
+          )}
           <textarea
             value={editDetails}
             onChange={(e) => setEditDetails(e.target.value)}

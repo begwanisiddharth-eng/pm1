@@ -16,7 +16,9 @@ export default function Page() {
     getMe()
       .then((user) => {
         if (!user) { setPhase("unauthenticated"); return; }
-        return getBoard().then((b) => { setBoard(b); setPhase("ready"); });
+        return getBoard()
+          .then((b) => { setBoard(b); setPhase("ready"); })
+          .catch(() => setPhase("board-error"));
       })
       .catch(() => setPhase("unauthenticated"));
   }, []);
