@@ -14,6 +14,7 @@ A local Project Management MVP: a Kanban board with drag-and-drop, inline card e
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000  # start server
 uv run pytest                                               # run all tests
 uv run pytest tests/test_board.py                          # run a single test file
+uv run pytest -k test_name                                  # run tests matching a name pattern
 ```
 
 ### Frontend (run from `frontend/`)
@@ -25,6 +26,7 @@ npm run test:e2e           # Playwright e2e (builds first)
 npm run test:all           # both unit and e2e
 npm run build              # Next.js static export to frontend/out/
 npm run dev                # local Next.js dev server (not served by FastAPI)
+npm run lint               # ESLint
 ```
 
 ### Start/Stop Scripts (run from project root)
@@ -46,12 +48,12 @@ OPENAI_API_KEY=sk-...
 ```
 project root/
   backend/        FastAPI app (Python, uv)
+    pm.db         SQLite database (auto-created, git-ignored)
   frontend/       Next.js app (TypeScript, Tailwind)
     out/          static export — FastAPI serves this at /
   scripts/        start/stop scripts for Windows, macOS, Linux
   docs/           planning documents
   .env            OPENAI_API_KEY (git-ignored)
-  pm.db           SQLite database (auto-created, git-ignored)
 ```
 
 ### Request Flow
@@ -60,19 +62,19 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 
 ### Backend Modules (`backend/app/`)
 
-- `main.py` — FastAPI app entry point; mounts routers and serves `frontend/out/` at `/`
+- `main.py` — FastAPI app entry point; mounts routers and serves `frontend/out/` at `/`; exposes `GET /api/health`
 - `auth.py` — `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`; `get_current_user` dependency used by protected routes
 - `board.py` — `GET /api/board`, `PUT /api/board`; `BoardData` Pydantic model shared with ai_router
 - `database.py` — SQLite init, `users`/`boards` tables, seed data, `get_db()` dependency
 - `ai.py` — OpenAI client, `gpt-4o-mini` model, Structured Outputs (`AIChatResponse`)
-- `ai_router.py` — `POST /api/ai/chat`; reads board, calls `ai.chat()`, validates AI board output, saves if valid
+- `ai_router.py` — `POST /api/ai/chat`; reads board, calls `ai.chat()`, validates AI board output, saves if valid; caps conversation history at 40 messages (20 turns)
 
 ### Frontend Modules (`frontend/src/`)
 
 - `app/page.tsx` — root page; manages auth phase (`loading | unauthenticated | board-error | ready`)
 - `lib/api.ts` — all fetch calls (`getMe`, `login`, `logout`, `getBoard`, `saveBoard`, `chatWithBoard`)
 - `lib/kanban.ts` — `Card`, `Column`, `BoardData` types; default data; ID helpers; `moveCard` (handles same-column reorder and cross-column moves)
-- `components/KanbanBoard.tsx` — owns board state; drag-and-drop via `@dnd-kit/core` (`PointerSensor`, 6 px activation, `closestCorners`); all mutations follow: compute `next` → `setBoard(next)` → `void persist(next)`. AI updates are the exception — backend already saved during the AI call, so `handleAiBoardUpdate` skips `persist()`.
+- `components/KanbanBoard.tsx` — owns board state; drag-and-drop via `@dnd-kit/core` (`PointerSensor`, 6 px activation, `closestCorners`); all mutations follow: capture `prev = board` → compute `next` → `setBoard(next)` → `void persist(prev, next)`; on save failure `persist` calls `setBoard(prev)` to roll back. AI updates are the exception — backend already saved during the AI call, so `handleAiBoardUpdate` skips `persist()`.
 - `components/KanbanColumn.tsx` — column rendering, inline title editing, delegates add-card to `NewCardForm`
 - `components/KanbanCard.tsx` — draggable card, delete, inline edit form (title + details)
 - `components/KanbanCardPreview.tsx` — read-only card shadow rendered inside `DragOverlay` while dragging

@@ -41,15 +41,6 @@ def get_client() -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
-def ask(prompt: str) -> str:
-    client = get_client()
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content or ""
-
-
 def chat(messages: list[dict]) -> AIChatResponse:
     client = get_client()
     response = client.beta.chat.completions.parse(

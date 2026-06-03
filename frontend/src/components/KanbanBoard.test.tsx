@@ -117,6 +117,7 @@ describe("KanbanBoard", () => {
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, "Will be rolled back");
     await userEvent.click(within(column).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(vi.mocked(saveBoard)).toHaveBeenCalled());
     await waitFor(() =>
       expect(within(column).getByText(originalTitle)).toBeInTheDocument()
     );

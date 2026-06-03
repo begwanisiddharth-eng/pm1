@@ -67,6 +67,9 @@ def ai_chat_endpoint(
     saved_board: BoardData | None = None
     if ai_response.board is not None:
         try:
+            card_ids = [c.id for c in ai_response.board.cards]
+            if len(card_ids) != len(set(card_ids)):
+                raise ValueError("AI response contains duplicate card IDs")
             board_dict = {
                 "columns": [c.model_dump() for c in ai_response.board.columns],
                 "cards": {c.id: c.model_dump() for c in ai_response.board.cards},
