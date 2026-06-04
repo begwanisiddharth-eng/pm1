@@ -1,4 +1,32 @@
-import { moveCard, matchesFilter, type Column, type Card, type CardFilter } from "@/lib/kanban";
+import { moveCard, moveColumn, matchesFilter, type Column, type Card, type CardFilter } from "@/lib/kanban";
+
+describe("moveColumn", () => {
+  const cols: Column[] = [
+    { id: "col-a", title: "A", cardIds: [] },
+    { id: "col-b", title: "B", cardIds: [] },
+    { id: "col-c", title: "C", cardIds: [] },
+  ];
+
+  it("moves a column forward", () => {
+    const result = moveColumn(cols, "col-a", "col-b");
+    expect(result.map((c) => c.id)).toEqual(["col-b", "col-a", "col-c"]);
+  });
+
+  it("moves a column backward", () => {
+    const result = moveColumn(cols, "col-c", "col-a");
+    expect(result.map((c) => c.id)).toEqual(["col-c", "col-a", "col-b"]);
+  });
+
+  it("returns same array when moving to same position", () => {
+    const result = moveColumn(cols, "col-b", "col-b");
+    expect(result).toBe(cols);
+  });
+
+  it("returns same array when id not found", () => {
+    const result = moveColumn(cols, "col-x", "col-a");
+    expect(result).toBe(cols);
+  });
+});
 
 describe("moveCard", () => {
   const baseColumns: Column[] = [

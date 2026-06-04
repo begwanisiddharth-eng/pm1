@@ -118,6 +118,7 @@ describe("KanbanBoard", () => {
               priority: null,
               due_date: null,
               labels: [],
+              checklist: [],
             }),
           }),
         })

@@ -1,5 +1,11 @@
 export type Priority = "low" | "medium" | "high" | "critical";
 
+export type ChecklistItem = {
+  id: string;
+  text: string;
+  done: boolean;
+};
+
 export type Card = {
   id: string;
   title: string;
@@ -7,6 +13,7 @@ export type Card = {
   priority?: Priority | null;
   due_date?: string | null;
   labels?: string[];
+  checklist?: ChecklistItem[];
 };
 
 export type LabelOption = {
@@ -215,4 +222,14 @@ export const createId = (prefix: string) => {
   const randomPart = Math.random().toString(36).slice(2, 8);
   const timePart = Date.now().toString(36);
   return `${prefix}-${randomPart}${timePart}`;
+};
+
+export const moveColumn = (columns: Column[], activeId: string, overId: string): Column[] => {
+  const oldIndex = columns.findIndex((c) => c.id === activeId);
+  const newIndex = columns.findIndex((c) => c.id === overId);
+  if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return columns;
+  const next = [...columns];
+  next.splice(oldIndex, 1);
+  next.splice(newIndex, 0, columns[oldIndex]);
+  return next;
 };

@@ -7,10 +7,12 @@ This project is a local Project Management App. Implemented features:
 - Users can register an account or sign in to an existing one.
 - Authenticated users see a board selector showing all their Kanban boards.
 - Each user can have multiple Kanban boards; they can create, rename, and delete boards.
-- On a board: columns can be added, renamed, deleted, and reordered.
-- Cards on the board can be moved with drag and drop, edited, created, and deleted.
-- Cards carry optional metadata: priority (low/medium/high/critical), due date, and labels.
+- On a board: columns can be added, renamed, deleted; cards can be dragged between and within columns.
+- Columns can be reordered by drag-and-drop.
+- Cards carry optional metadata: priority (low/medium/high/critical), due date, labels, and a checklist.
+- Cards can be moved with drag and drop, edited inline (all fields), created, and deleted.
 - A filter bar lets users search cards by text, filter by priority, and show overdue-only.
+- Board header shows live summary stats: total cards, overdue count, checklist completion.
 - There is an AI chat sidebar; the AI can create, edit, move, and reorganize cards and columns.
   The AI preserves card metadata (priority, due_date, labels) when updating the board.
 

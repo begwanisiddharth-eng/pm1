@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
-import type { Card, Priority } from "@/lib/kanban";
-import { LABEL_OPTIONS } from "@/lib/kanban";
+import type { Card, ChecklistItem, Priority } from "@/lib/kanban";
+import { LABEL_OPTIONS, createId } from "@/lib/kanban";
 
 type KanbanCardProps = {
   card: Card;
@@ -15,6 +15,7 @@ type KanbanCardProps = {
     priority: Priority | null,
     dueDate: string | null,
     labels: string[],
+    checklist: ChecklistItem[],
   ) => void;
 };
 
@@ -51,6 +52,8 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const [editPriority, setEditPriority] = useState<Priority | null>(null);
   const [editDueDate, setEditDueDate] = useState("");
   const [editLabels, setEditLabels] = useState<string[]>([]);
+  const [editChecklist, setEditChecklist] = useState<ChecklistItem[]>([]);
+  const [newChecklistText, setNewChecklistText] = useState("");
   const [titleError, setTitleError] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -67,6 +70,8 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
     setEditPriority(card.priority ?? null);
     setEditDueDate(card.due_date ?? "");
     setEditLabels(card.labels ?? []);
+    setEditChecklist(card.checklist ?? []);
+    setNewChecklistText("");
     setTitleError(false);
     setIsEditing(true);
   };
@@ -77,13 +82,30 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
     );
   };
 
+  const addChecklistItem = () => {
+    const text = newChecklistText.trim();
+    if (!text) return;
+    setEditChecklist((prev) => [...prev, { id: createId("chk"), text, done: false }]);
+    setNewChecklistText("");
+  };
+
+  const toggleChecklistItem = (itemId: string) => {
+    setEditChecklist((prev) =>
+      prev.map((item) => item.id === itemId ? { ...item, done: !item.done } : item)
+    );
+  };
+
+  const removeChecklistItem = (itemId: string) => {
+    setEditChecklist((prev) => prev.filter((item) => item.id !== itemId));
+  };
+
   const handleSave = () => {
     const trimmed = editTitle.trim();
     if (!trimmed) {
       setTitleError(true);
       return;
     }
-    onEdit(card.id, trimmed, editDetails, editPriority, editDueDate || null, editLabels);
+    onEdit(card.id, trimmed, editDetails, editPriority, editDueDate || null, editLabels, editChecklist);
     setTitleError(false);
     setIsEditing(false);
   };
@@ -94,6 +116,8 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   };
 
   const dueDateInfo = card.due_date ? formatDueDate(card.due_date) : null;
+  const checklist = card.checklist ?? [];
+  const checklistDone = checklist.filter((i) => i.done).length;
 
   return (
     <article
@@ -210,6 +234,61 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
             </div>
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
+              Checklist
+            </span>
+            <div className="flex flex-col gap-1">
+              {editChecklist.map((item) => (
+                <div key={item.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={item.done}
+                    onChange={() => toggleChecklistItem(item.id)}
+                    className="h-3.5 w-3.5 accent-[var(--primary-blue)]"
+                    aria-label={`Toggle ${item.text}`}
+                  />
+                  <span
+                    className={clsx(
+                      "flex-1 text-xs text-[var(--navy-dark)]",
+                      item.done && "line-through text-[var(--gray-text)]"
+                    )}
+                  >
+                    {item.text}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeChecklistItem(item.id)}
+                    className="text-[10px] text-[var(--gray-text)] hover:text-red-500"
+                    aria-label={`Remove ${item.text}`}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  value={newChecklistText}
+                  onChange={(e) => setNewChecklistText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); }
+                  }}
+                  placeholder="Add item..."
+                  className="flex-1 rounded border border-[var(--stroke)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--navy-dark)] outline-none placeholder:text-[var(--gray-text)] focus:border-[var(--primary-blue)]"
+                  aria-label="New checklist item"
+                />
+                <button
+                  type="button"
+                  onClick={addChecklistItem}
+                  className="rounded border border-[var(--stroke)] px-2 py-1 text-[10px] font-semibold text-[var(--gray-text)] hover:border-[var(--navy-dark)] hover:text-[var(--navy-dark)]"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -236,7 +315,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
             <p className="mt-2 text-sm leading-6 text-[var(--gray-text)]">
               {card.details}
             </p>
-            {(card.priority || dueDateInfo || (card.labels && card.labels.length > 0)) && (
+            {(card.priority || dueDateInfo || (card.labels && card.labels.length > 0) || checklist.length > 0) && (
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {card.priority && (
                   <span
@@ -278,6 +357,18 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
                     </span>
                   );
                 })}
+                {checklist.length > 0 && (
+                  <span
+                    className={clsx(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      checklistDone === checklist.length
+                        ? "bg-green-100 text-green-700"
+                        : "bg-[var(--surface)] text-[var(--gray-text)]"
+                    )}
+                  >
+                    {checklistDone} / {checklist.length}
+                  </span>
+                )}
               </div>
             )}
           </div>

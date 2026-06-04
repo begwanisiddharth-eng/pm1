@@ -11,6 +11,12 @@ from app.database import get_db, _EMPTY_BOARD
 router = APIRouter(prefix="/api")
 
 
+class ChecklistItem(BaseModel):
+    id: str
+    text: str
+    done: bool = False
+
+
 class Card(BaseModel):
     id: str
     title: str
@@ -18,6 +24,7 @@ class Card(BaseModel):
     priority: Literal["low", "medium", "high", "critical"] | None = None
     due_date: str | None = None
     labels: list[str] = []
+    checklist: list[ChecklistItem] = []
 
 
 class Column(BaseModel):

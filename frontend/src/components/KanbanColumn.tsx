@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { Card, CardFilter, Column, Priority } from "@/lib/kanban";
+import { CSS } from "@dnd-kit/utilities";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import type { Card, CardFilter, ChecklistItem, Column, Priority } from "@/lib/kanban";
 import { matchesFilter } from "@/lib/kanban";
 import { KanbanCard } from "@/components/KanbanCard";
 import { NewCardForm } from "@/components/NewCardForm";
@@ -14,7 +14,7 @@ type KanbanColumnProps = {
   onRename: (columnId: string, title: string) => void;
   onAddCard: (columnId: string, title: string, details: string) => void;
   onDeleteCard: (columnId: string, cardId: string) => void;
-  onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null, labels: string[]) => void;
+  onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null, labels: string[], checklist: ChecklistItem[]) => void;
   onDeleteColumn: (columnId: string) => void;
 };
 
@@ -28,9 +28,22 @@ export const KanbanColumn = ({
   onEditCard,
   onDeleteColumn,
 }: KanbanColumnProps) => {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({ id: column.id });
   const [titleValue, setTitleValue] = useState(column.title);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   const visibleCards = filter
     ? cards.filter((card) => matchesFilter(card, filter))
@@ -53,16 +66,23 @@ export const KanbanColumn = ({
   return (
     <section
       ref={setNodeRef}
+      style={style}
       className={clsx(
         "flex min-h-[520px] flex-col rounded-3xl border border-[var(--stroke)] bg-[var(--surface-strong)] p-4 shadow-[var(--shadow)] transition",
-        isOver && "ring-2 ring-[var(--accent-yellow)]"
+        isOver && "ring-2 ring-[var(--accent-yellow)]",
+        isDragging && "opacity-50"
       )}
       data-testid={`column-${column.id}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <div className="h-2 w-10 rounded-full bg-[var(--accent-yellow)]" />
+            <div
+              className="h-2 w-10 cursor-grab rounded-full bg-[var(--accent-yellow)] active:cursor-grabbing"
+              title="Drag to reorder column"
+              {...attributes}
+              {...listeners}
+            />
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
               {cards.length} cards
             </span>

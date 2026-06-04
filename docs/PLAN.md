@@ -310,6 +310,48 @@ Add a polished AI chat sidebar to the Kanban UI.
 - Valid AI board updates appear on the Kanban board automatically.
 - The app remains usable when AI fails.
 
+## Part 12: Column Reordering, Card Checklists, and Board Stats
+
+### Goal
+
+Deepen the PM experience with three targeted improvements:
+1. Columns can be reordered by drag-and-drop (same dnd-kit setup, new sensor target).
+2. Cards gain a checklist field — ordered sub-items with done/undone state, editable inline.
+3. A compact stats row in the board header shows live counts: total cards, overdue, checklist completion.
+
+### Checklist
+
+- [ ] Backend: add `checklist: list[ChecklistItem]` to `Card` model (default `[]`).
+- [ ] Backend: `ChecklistItem` Pydantic model (`id: str`, `text: str`, `done: bool`).
+- [ ] Backend: preserve `checklist` in AI board merges (alongside priority, due_date, labels).
+- [ ] Backend: add tests for checklist round-trip and default empty list.
+- [ ] Frontend `kanban.ts`: add `ChecklistItem` type and `checklist?: ChecklistItem[]` to `Card`.
+- [ ] Frontend `kanban.ts`: add `moveColumn` helper (reorders `columns` array).
+- [ ] Frontend `KanbanBoard.tsx`: support column drag-and-drop using a second `SortableContext`
+  wrapping the column list; `handleDragEnd` distinguishes card vs column moves.
+- [ ] Frontend `KanbanCard.tsx`: checklist section in edit mode (add item, toggle done, remove item).
+- [ ] Frontend `KanbanCard.tsx`: checklist progress chip in view mode (e.g. "2 / 4").
+- [ ] Frontend `BoardStats.tsx`: new component showing total cards, overdue count, checklist progress across board.
+- [ ] Frontend `KanbanBoard.tsx`: render `BoardStats` in the header area.
+- [ ] Frontend tests: `moveColumn` unit tests; checklist interaction tests in `KanbanBoard.test.tsx`.
+- [ ] Backend tests: 55+ passing; frontend tests: 27+ passing; ESLint clean; build succeeds.
+
+### Tests
+
+- Backend: PUT board with checklist items returns them correctly.
+- Backend: checklist defaults to `[]` when omitted.
+- Backend: AI merge preserves checklist from existing board.
+- Frontend: `moveColumn` reorders columns correctly.
+- Frontend: adding a checklist item and toggling it done calls `saveBoard`.
+- Frontend: board stats show correct counts.
+
+### Success Criteria
+
+- Users can drag columns to reorder them; order persists to backend.
+- Cards can have checklist items; done state persists.
+- Board header shows accurate live stats.
+- All existing tests continue to pass.
+
 ## Public API Summary
 
 Planned backend routes:

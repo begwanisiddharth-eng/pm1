@@ -339,3 +339,65 @@ def test_get_board_returns_labels(
     assert resp.status_code == 200
     card = resp.json()["cards"]["c1"]
     assert card["labels"] == ["feature", "backend"]
+
+
+# --- Card checklist tests ---
+
+
+def test_put_board_card_checklist_saved_and_returned(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Task",
+                "details": "With checklist",
+                "checklist": [
+                    {"id": "item-1", "text": "Step one", "done": False},
+                    {"id": "item-2", "text": "Step two", "done": True},
+                ],
+            }
+        },
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert len(card["checklist"]) == 2
+    assert card["checklist"][0] == {"id": "item-1", "text": "Step one", "done": False}
+    assert card["checklist"][1] == {"id": "item-2", "text": "Step two", "done": True}
+
+
+def test_put_board_card_checklist_defaults_to_empty(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "No checklist", "details": "Plain card"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert card["checklist"] == []
+
+
+def test_get_board_returns_checklist(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Checklist card",
+                "details": "Check this",
+                "checklist": [{"id": "item-a", "text": "Do it", "done": True}],
+            }
+        },
+    }
+    auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    resp = auth_client.get(f"/api/boards/{default_board_id}")
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert card["checklist"] == [{"id": "item-a", "text": "Do it", "done": True}]

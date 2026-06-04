@@ -78,12 +78,13 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 - `components/BoardSelector.tsx` — lists boards, inline create-board form
 - `components/KanbanBoard.tsx` — owns board state; all mutations follow `prev → next → setBoard(next) → persist(prev, next)`; on failure rolls back to `prev`; AI updates skip `persist()` (backend already saved); holds filter state
 - `components/KanbanColumn.tsx` — column rendering, rename, delete with confirmation, applies card filter
-- `components/KanbanCard.tsx` — draggable card; view shows priority badge, due-date chip, label chips; edit has all fields; state initialized on open (no useEffect sync)
+- `components/KanbanCard.tsx` — draggable card; view shows priority badge, due-date chip, label chips, checklist progress; edit has all fields including checklist items; state initialized on open (no useEffect sync)
 - `components/KanbanCardPreview.tsx` — read-only card in `DragOverlay` while dragging
 - `components/NewCardForm.tsx` — toggle-open add-card form used by `KanbanColumn`
 - `components/AddColumnForm.tsx` — toggle-open tile for adding a new column
 - `components/FilterBar.tsx` — search text, priority filter chips, overdue toggle
 - `components/AISidebar.tsx` — chat history, input, send; passes `boardId` to `chatWithBoard`
+- `components/BoardStats.tsx` — shows total cards, overdue count, checklist completion in board header
 
 ### Data Model
 
@@ -97,11 +98,12 @@ type BoardData = {
     priority?: "low"|"medium"|"high"|"critical"|null;
     due_date?: string|null;
     labels?: string[];
+    checklist?: { id: string; text: string; done: boolean }[];
   }>;
 }
 ```
 
-The AI returns cards as a flat list (OpenAI Structured Outputs constraint). `ai_router.py` converts this to the dict shape, merges existing metadata, validates, and saves.
+The AI returns cards as a flat list (OpenAI Structured Outputs constraint). `ai_router.py` converts this to the dict shape, merges existing metadata (priority, due_date, labels, checklist), validates, and saves.
 
 ### Authentication
 

@@ -81,6 +81,7 @@ def ai_chat_endpoint(
                     card_dict["priority"] = existing.priority
                     card_dict["due_date"] = existing.due_date
                     card_dict["labels"] = existing.labels
+                    card_dict["checklist"] = [item.model_dump() for item in existing.checklist]
                 cards_dict[ai_card.id] = card_dict
 
             board_dict = {

@@ -11,12 +11,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { AISidebar } from "@/components/AISidebar";
 import { AddColumnForm } from "@/components/AddColumnForm";
 import { FilterBar } from "@/components/FilterBar";
-import { createId, moveCard, type BoardData, type Priority, type CardFilter } from "@/lib/kanban";
+import { BoardStats } from "@/components/BoardStats";
+import { createId, moveCard, moveColumn, type BoardData, type ChecklistItem, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/api";
 
@@ -66,6 +68,8 @@ export const KanbanBoard = ({
     }
   };
 
+  const columnIds = board.columns.map((c) => c.id);
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveCardId(event.active.id as string);
   };
@@ -74,10 +78,17 @@ export const KanbanBoard = ({
     const { active, over } = event;
     setActiveCardId(null);
     if (!over || active.id === over.id) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    const isColumnMove = columnIds.includes(activeId) && columnIds.includes(overId);
+
     const prev = board;
     const next: BoardData = {
       ...board,
-      columns: moveCard(board.columns, active.id as string, over.id as string),
+      columns: isColumnMove
+        ? moveColumn(board.columns, activeId, overId)
+        : moveCard(board.columns, activeId, overId),
     };
     setBoard(next);
     void persist(prev, next);
@@ -165,6 +176,7 @@ export const KanbanBoard = ({
     priority: Priority | null,
     dueDate: string | null,
     labels: string[],
+    checklist: ChecklistItem[],
   ) => {
     const prev = board;
     const next: BoardData = {
@@ -178,6 +190,7 @@ export const KanbanBoard = ({
           priority,
           due_date: dueDate,
           labels,
+          checklist,
         },
       },
     };
@@ -331,6 +344,7 @@ export const KanbanBoard = ({
               </div>
             ))}
           </div>
+          <BoardStats board={board} />
         </header>
 
         <FilterBar filter={filter} onChange={setFilter} />
@@ -343,26 +357,28 @@ export const KanbanBoard = ({
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <section className="flex items-start gap-4 pb-2">
-                {board.columns.map((column) => (
-                  <div key={column.id} className="min-w-[220px] flex-1">
-                    <KanbanColumn
-                      column={column}
-                      cards={column.cardIds.flatMap((cardId) => {
-                        const card = board.cards[cardId];
-                        return card ? [card] : [];
-                      })}
-                      filter={filter}
-                      onRename={handleRenameColumn}
-                      onAddCard={handleAddCard}
-                      onDeleteCard={handleDeleteCard}
-                      onEditCard={handleEditCard}
-                      onDeleteColumn={handleDeleteColumn}
-                    />
-                  </div>
-                ))}
-                <AddColumnForm onAdd={handleAddColumn} />
-              </section>
+              <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
+                <section className="flex items-start gap-4 pb-2">
+                  {board.columns.map((column) => (
+                    <div key={column.id} className="min-w-[220px] flex-1">
+                      <KanbanColumn
+                        column={column}
+                        cards={column.cardIds.flatMap((cardId) => {
+                          const card = board.cards[cardId];
+                          return card ? [card] : [];
+                        })}
+                        filter={filter}
+                        onRename={handleRenameColumn}
+                        onAddCard={handleAddCard}
+                        onDeleteCard={handleDeleteCard}
+                        onEditCard={handleEditCard}
+                        onDeleteColumn={handleDeleteColumn}
+                      />
+                    </div>
+                  ))}
+                  <AddColumnForm onAdd={handleAddColumn} />
+                </section>
+              </SortableContext>
               <DragOverlay>
                 {activeCard ? (
                   <div className="w-[260px]">

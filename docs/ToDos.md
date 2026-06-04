@@ -152,3 +152,38 @@ This file tracks the work required to complete the Project Management MVP. Mark 
 - [x] Update frontend tests for new API signatures (19 passing).
 - [x] ESLint clean (0 errors, 0 warnings).
 - [x] Frontend builds successfully with TypeScript.
+
+## Part 12: Card Labels, Filters, Column Reordering, Checklists, and Board Stats
+
+### Completed (Iteration 3)
+
+- [x] Add `labels: list[str] = []` to backend `Card` model.
+- [x] Preserve `labels` in AI board merges alongside priority and due_date.
+- [x] Add backend label round-trip tests (saved, returned, defaults to `[]`).
+- [x] Add `labels?: string[]` to frontend `Card` type in `kanban.ts`.
+- [x] Add `LABEL_OPTIONS` constant (6 predefined labels with Tailwind colors).
+- [x] Add `CardFilter` type and `matchesFilter` helper to `kanban.ts`.
+- [x] Update `KanbanCard` edit mode: label multi-select (toggle chips).
+- [x] Update `KanbanCard` view mode: label chips displayed below priority/due-date.
+- [x] Create `FilterBar` component: search input, priority chips, overdue toggle, clear button.
+- [x] Wire filter state into `KanbanBoard`; pass `filter` prop to each `KanbanColumn`.
+- [x] Apply `matchesFilter` in `KanbanColumn` to show only matching cards.
+- [x] Add 8 `matchesFilter` unit tests to `kanban.test.ts`.
+- [x] ESLint clean; build succeeds; 55 backend + 27 frontend tests passing.
+
+### Iteration 4 (completed)
+
+- [x] Backend: add `ChecklistItem` Pydantic model (`id`, `text`, `done`).
+- [x] Backend: add `checklist: list[ChecklistItem] = []` to `Card` model.
+- [x] Backend: preserve `checklist` in AI board merges.
+- [x] Backend: add checklist round-trip tests and default-empty-list test (58 backend tests passing).
+- [x] Frontend `kanban.ts`: add `ChecklistItem` type and `checklist?` to `Card`.
+- [x] Frontend `kanban.ts`: add `moveColumn` helper.
+- [x] Frontend `KanbanBoard.tsx`: column drag-and-drop reordering via `SortableContext` + `horizontalListSortingStrategy`; `handleDragEnd` distinguishes card vs column moves.
+- [x] Frontend `KanbanColumn.tsx`: replaced `useDroppable` with `useSortable`; yellow pill is the drag handle.
+- [x] Frontend `KanbanCard.tsx`: checklist section in edit mode (add item, toggle done, remove item).
+- [x] Frontend `KanbanCard.tsx`: checklist progress chip in view mode (e.g. "2 / 4", green when all done).
+- [x] Frontend `BoardStats.tsx`: new component — total cards, overdue count, checklist completion.
+- [x] Frontend `KanbanBoard.tsx`: render `BoardStats` in board header; import `BoardStats`.
+- [x] Frontend tests: 4 `moveColumn` unit tests; checklist field in edit assertion; 58 backend + 31 frontend passing.
+- [x] ESLint clean; build succeeds.
