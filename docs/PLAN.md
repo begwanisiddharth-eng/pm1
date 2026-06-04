@@ -502,6 +502,39 @@ Three targeted PM improvements:
 - Board can be exported as a downloadable JSON file.
 - All existing tests continue to pass.
 
+## Part 17: Board Import, Search Highlight, and Last-Updated Timestamps (Iteration 9)
+
+### Goal
+
+Three targeted improvements:
+1. Users can import a JSON file to replace the current board's content; requires confirmation before overwriting.
+2. When a text search filter is active, matching substrings in card titles and details are highlighted.
+3. The board selector and board header show a human-readable "last updated" time (e.g. "2 hours ago").
+
+### Checklist
+
+- [ ] Frontend `KanbanBoard.tsx`: "Import JSON" button (hidden file input); on file select, parse JSON, validate it looks like a BoardData, prompt confirmation, then call `saveBoard` with the imported data and refresh.
+- [ ] Frontend `KanbanCard.tsx`: add `HighlightText` helper that wraps matches in a `<mark>` element; use it for card title and details when `filter.search` is non-empty.
+- [ ] Frontend `KanbanColumn.tsx`: pass `filter.search` to each card via a new `searchQuery` prop, or use the existing `filter` prop already available.
+- [ ] Frontend `BoardSelector.tsx`: show `updated_at` as a relative time string (e.g. "3 days ago") under each board name.
+- [ ] Frontend `KanbanBoard.tsx`: show `updated_at` as a relative time string in the board header subtitle area; refresh after each save.
+- [ ] Frontend `lib/kanban.ts`: add `timeAgo(isoString)` utility.
+- [ ] Frontend tests: highlight test (HighlightText renders marks); import JSON test; timeAgo unit tests.
+- [ ] ESLint clean; build succeeds; all prior tests still passing.
+
+### Tests
+
+- Frontend: `timeAgo` returns "just now" for recent dates, "X minutes ago", "X hours ago", "X days ago".
+- Frontend: HighlightText wraps matching substring in a mark element.
+- Frontend: import JSON button triggers file input, validates, and calls saveBoard on confirmation.
+
+### Success Criteria
+
+- Board JSON can be imported; invalid JSON is rejected gracefully.
+- Search highlights make matches easy to spot.
+- Board ages are human-readable throughout the app.
+- All existing tests continue to pass.
+
 ## Public API Summary
 
 Planned backend routes:

@@ -159,6 +159,7 @@ export const KanbanColumn = ({
               key={card.id}
               card={card}
               otherColumns={otherColumns}
+              searchQuery={filter?.search}
               onArchive={(cardId) => onArchiveCard(column.id, cardId)}
               onDuplicate={(cardId) => onDuplicateCard(column.id, cardId)}
               onMoveToColumn={(cardId, targetId) => onMoveCardToColumn(cardId, column.id, targetId)}

@@ -237,3 +237,13 @@ This file tracks the work required to complete the Project Management MVP. Mark 
 - [x] Frontend `KanbanBoard.tsx`: "Export JSON" button downloads board as JSON file.
 - [x] Frontend tests: color picker test; add comment test (2 new tests, 43 total).
 - [x] ESLint clean; build succeeds; 70 backend tests, 43 frontend tests passing.
+
+## Part 17: Board Import, Search Highlight, and Last-Updated Timestamps (Iteration 9)
+
+- [x] Frontend `lib/kanban.ts`: add `timeAgo(isoString)` utility.
+- [x] Frontend `BoardSelector.tsx`: show relative "last updated" time per board.
+- [x] Frontend `KanbanBoard.tsx`: show relative "last updated" in board header; refresh after save.
+- [x] Frontend `KanbanBoard.tsx`: "Import JSON" button; parse, validate, confirm, call saveBoard.
+- [x] Frontend `KanbanCard.tsx`: add `HighlightText` helper; highlight `filter.search` matches in title and details.
+- [x] Frontend tests: 7 timeAgo unit tests (22 kanban.test.ts tests total); 50 frontend tests passing.
+- [x] ESLint clean; build succeeds; 70 backend tests, 50 frontend tests passing.

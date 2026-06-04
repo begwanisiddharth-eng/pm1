@@ -26,6 +26,9 @@ This project is a local Project Management App. Implemented features:
 - Cards can have an accent color (one of several preset colors) for at-a-glance grouping.
 - Cards support timestamped text comments; comments are shown in view mode and editable in the edit panel.
 - The current board can be exported to a JSON file via a button in the board header.
+- A board can be imported from a JSON file; the imported content replaces the current board after confirmation.
+- When a text filter is active, matching text in card titles and details is highlighted.
+- The board selector and board header show a human-readable "last updated" timestamp (e.g. "2 hours ago").
 
 ## Technical Decisions
 

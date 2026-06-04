@@ -1,4 +1,4 @@
-import { moveCard, moveColumn, matchesFilter, type Column, type Card, type CardFilter } from "@/lib/kanban";
+import { moveCard, moveColumn, matchesFilter, timeAgo, type Column, type Card, type CardFilter } from "@/lib/kanban";
 
 describe("moveColumn", () => {
   const cols: Column[] = [
@@ -104,5 +104,37 @@ describe("matchesFilter", () => {
     expect(
       matchesFilter(baseCard, { search: "login", priority: "low", overdueOnly: false })
     ).toBe(false);
+  });
+});
+
+describe("timeAgo", () => {
+  const now = Date.now();
+
+  it("returns 'just now' for less than 60 seconds ago", () => {
+    expect(timeAgo(new Date(now - 30_000).toISOString())).toBe("just now");
+  });
+
+  it("returns minutes ago", () => {
+    expect(timeAgo(new Date(now - 5 * 60_000).toISOString())).toBe("5 minutes ago");
+  });
+
+  it("returns '1 minute ago' (singular)", () => {
+    expect(timeAgo(new Date(now - 90_000).toISOString())).toBe("1 minute ago");
+  });
+
+  it("returns hours ago", () => {
+    expect(timeAgo(new Date(now - 3 * 3600_000).toISOString())).toBe("3 hours ago");
+  });
+
+  it("returns '1 hour ago' (singular)", () => {
+    expect(timeAgo(new Date(now - 3700_000).toISOString())).toBe("1 hour ago");
+  });
+
+  it("returns days ago", () => {
+    expect(timeAgo(new Date(now - 2 * 86_400_000).toISOString())).toBe("2 days ago");
+  });
+
+  it("returns '1 day ago' (singular)", () => {
+    expect(timeAgo(new Date(now - 25 * 3600_000).toISOString())).toBe("1 day ago");
   });
 });

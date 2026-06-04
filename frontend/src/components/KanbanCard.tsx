@@ -7,9 +7,23 @@ import { CARD_COLORS, LABEL_OPTIONS, createId } from "@/lib/kanban";
 
 type ColumnOption = { id: string; title: string };
 
+const HighlightText = ({ text, query }: { text: string; query: string }) => {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 text-[var(--navy-dark)]">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+};
+
 type KanbanCardProps = {
   card: Card;
   otherColumns: ColumnOption[];
+  searchQuery?: string;
   onArchive: (cardId: string) => void;
   onDuplicate: (cardId: string) => void;
   onMoveToColumn: (cardId: string, targetColumnId: string) => void;
@@ -52,7 +66,7 @@ const formatDueDate = (dateStr: string): { text: string; overdue: boolean; soon:
   return { text, overdue: diffDays < 0, soon: diffDays >= 0 && diffDays <= 2 };
 };
 
-export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveToColumn, onEdit }: KanbanCardProps) => {
+export const KanbanCard = ({ card, otherColumns, searchQuery = "", onArchive, onDuplicate, onMoveToColumn, onEdit }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
@@ -410,10 +424,10 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h4 className="font-display text-base font-semibold text-[var(--navy-dark)]">
-              {card.title}
+              <HighlightText text={card.title} query={searchQuery} />
             </h4>
             <p className="mt-2 text-sm leading-6 text-[var(--gray-text)]">
-              {card.details}
+              <HighlightText text={card.details} query={searchQuery} />
             </p>
             {(card.priority || dueDateInfo || (card.labels && card.labels.length > 0) || checklist.length > 0) && (
               <div className="mt-3 flex flex-wrap items-center gap-1.5">

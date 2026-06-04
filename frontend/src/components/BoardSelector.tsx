@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createBoard, type BoardSummary } from "@/lib/api";
+import { timeAgo } from "@/lib/kanban";
 
 type Props = {
   boards: BoardSummary[];
@@ -82,7 +83,7 @@ export const BoardSelector = ({
                 <div>
                   <p className="font-semibold text-[var(--navy-dark)]">{board.name}</p>
                   <p className="mt-1 text-xs text-[var(--gray-text)]">
-                    Updated {new Date(board.updated_at).toLocaleDateString()}
+                    Updated {timeAgo(board.updated_at)}
                   </p>
                 </div>
                 <span className="text-[var(--primary-blue)]">

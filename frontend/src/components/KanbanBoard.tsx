@@ -20,14 +20,16 @@ import { FilterBar } from "@/components/FilterBar";
 import { BoardStats } from "@/components/BoardStats";
 import { ArchivePanel } from "@/components/ArchivePanel";
 import { ChangePasswordModal } from "@/components/ChangePasswordModal";
-import { createId, moveCard, moveColumn, type BoardData, type ChecklistItem, type Comment, type Priority, type CardFilter } from "@/lib/kanban";
+import { createId, moveCard, moveColumn, timeAgo, type BoardData, type ChecklistItem, type Comment, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
+import { useRef } from "react";
 import type { BoardSummary } from "@/lib/api";
 
 type KanbanBoardProps = {
   initialBoard: BoardData;
   boardId: number;
   boardName: string;
+  initialUpdatedAt?: string;
   username: string;
   onLogout: () => void;
   onSwitchBoards: () => void;
@@ -39,6 +41,7 @@ export const KanbanBoard = ({
   initialBoard,
   boardId,
   boardName,
+  initialUpdatedAt,
   username,
   onLogout,
   onSwitchBoards,
@@ -57,6 +60,9 @@ export const KanbanBoard = ({
   const [descriptionDraft, setDescriptionDraft] = useState(initialBoard.description ?? "");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | undefined>(initialUpdatedAt);
+  const [confirmImport, setConfirmImport] = useState<BoardData | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -70,6 +76,7 @@ export const KanbanBoard = ({
     try {
       await saveBoard(boardId, next);
       setSaveError(null);
+      setLastUpdated(new Date().toISOString());
     } catch {
       setBoard(prev);
       setSaveError("Changes could not be saved. Please try again.");
@@ -290,6 +297,39 @@ export const KanbanBoard = ({
     void persist(prev, next);
   };
 
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as unknown;
+        if (
+          !parsed ||
+          typeof parsed !== "object" ||
+          !Array.isArray((parsed as Record<string, unknown>).columns) ||
+          typeof (parsed as Record<string, unknown>).cards !== "object"
+        ) {
+          setSaveError("Import failed: file does not contain a valid board.");
+          return;
+        }
+        setConfirmImport(parsed as BoardData);
+      } catch {
+        setSaveError("Import failed: file is not valid JSON.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleConfirmImport = async () => {
+    if (!confirmImport) return;
+    const prev = board;
+    setBoard(confirmImport);
+    setConfirmImport(null);
+    void persist(prev, confirmImport);
+  };
+
   const handleExportJson = () => {
     const blob = new Blob([JSON.stringify(board, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -428,6 +468,11 @@ export const KanbanBoard = ({
                   {board.description || "Add a description..."}
                 </p>
               )}
+              {lastUpdated && (
+                <p className="mt-1 text-xs text-[var(--gray-text)]">
+                  Last updated {timeAgo(lastUpdated)}
+                </p>
+              )}
             </div>
             <div className="flex items-start gap-3">
               {confirmDelete ? (
@@ -464,6 +509,21 @@ export const KanbanBoard = ({
               >
                 Export JSON
               </button>
+              <button
+                type="button"
+                onClick={() => importInputRef.current?.click()}
+                className="rounded-xl border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+              >
+                Import JSON
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={handleImportFile}
+                aria-label="Import board JSON"
+              />
               <div className="relative">
                 <button
                   type="button"
@@ -568,6 +628,35 @@ export const KanbanBoard = ({
           />
         )}
       </main>
+
+      {confirmImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--stroke)] bg-white p-6 shadow-xl">
+            <p className="font-display text-lg font-semibold text-[var(--navy-dark)]">
+              Replace board?
+            </p>
+            <p className="mt-2 text-sm text-[var(--gray-text)]">
+              This will overwrite all current cards and columns with the imported data. This action cannot be undone.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => void handleConfirmImport()}
+                className="rounded-xl bg-[var(--primary-blue)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Replace board
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmImport(null)}
+                className="rounded-xl border border-[var(--stroke)] px-4 py-2 text-sm font-semibold text-[var(--gray-text)] transition hover:border-[var(--navy-dark)]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showChangePassword && (
         <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
