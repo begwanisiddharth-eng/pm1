@@ -6,6 +6,52 @@ export type Card = {
   details: string;
   priority?: Priority | null;
   due_date?: string | null;
+  labels?: string[];
+};
+
+export type LabelOption = {
+  id: string;
+  text: string;
+  color: string;
+};
+
+export const LABEL_OPTIONS: LabelOption[] = [
+  { id: "bug",      text: "Bug",      color: "bg-red-100 text-red-700" },
+  { id: "feature",  text: "Feature",  color: "bg-blue-100 text-blue-700" },
+  { id: "frontend", text: "Frontend", color: "bg-purple-100 text-purple-700" },
+  { id: "backend",  text: "Backend",  color: "bg-indigo-100 text-indigo-700" },
+  { id: "design",   text: "Design",   color: "bg-pink-100 text-pink-700" },
+  { id: "docs",     text: "Docs",     color: "bg-gray-100 text-gray-600" },
+];
+
+export type CardFilter = {
+  search: string;
+  priority: Priority | null;
+  overdueOnly: boolean;
+};
+
+export const matchesFilter = (card: Card, filter: CardFilter): boolean => {
+  if (filter.search) {
+    const q = filter.search.toLowerCase();
+    if (
+      !card.title.toLowerCase().includes(q) &&
+      !card.details.toLowerCase().includes(q)
+    ) {
+      return false;
+    }
+  }
+  if (filter.priority && card.priority !== filter.priority) {
+    return false;
+  }
+  if (filter.overdueOnly) {
+    if (!card.due_date) return false;
+    const due = new Date(card.due_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    if (due >= today) return false;
+  }
+  return true;
 };
 
 export type Column = {

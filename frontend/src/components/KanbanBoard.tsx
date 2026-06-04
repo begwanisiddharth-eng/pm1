@@ -15,7 +15,8 @@ import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { AISidebar } from "@/components/AISidebar";
 import { AddColumnForm } from "@/components/AddColumnForm";
-import { createId, moveCard, type BoardData, type Priority } from "@/lib/kanban";
+import { FilterBar } from "@/components/FilterBar";
+import { createId, moveCard, type BoardData, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/api";
 
@@ -45,6 +46,7 @@ export const KanbanBoard = ({
   const [boardNameDraft, setBoardNameDraft] = useState(boardName);
   const [currentBoardName, setCurrentBoardName] = useState(boardName);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [filter, setFilter] = useState<CardFilter>({ search: "", priority: null, overdueOnly: false });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -162,6 +164,7 @@ export const KanbanBoard = ({
     details: string,
     priority: Priority | null,
     dueDate: string | null,
+    labels: string[],
   ) => {
     const prev = board;
     const next: BoardData = {
@@ -174,6 +177,7 @@ export const KanbanBoard = ({
           details,
           priority,
           due_date: dueDate,
+          labels,
         },
       },
     };
@@ -329,6 +333,8 @@ export const KanbanBoard = ({
           </div>
         </header>
 
+        <FilterBar filter={filter} onChange={setFilter} />
+
         <div className="flex items-start gap-6">
           <div className="min-w-0 flex-1 overflow-x-auto">
             <DndContext
@@ -346,6 +352,7 @@ export const KanbanBoard = ({
                         const card = board.cards[cardId];
                         return card ? [card] : [];
                       })}
+                      filter={filter}
                       onRename={handleRenameColumn}
                       onAddCard={handleAddCard}
                       onDeleteCard={handleDeleteCard}

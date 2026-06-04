@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Summary
 
-A local Project Management MVP: a Kanban board with drag-and-drop, inline card editing, session-based auth, SQLite persistence, and an OpenAI-powered AI sidebar. Runs locally without Docker. One hardcoded account (`user` / `password`), one board per user.
+A local Project Management app: multiple Kanban boards per user, drag-and-drop, inline card editing (priority, due date, labels), session-based auth with registration, SQLite persistence, and an OpenAI-powered AI sidebar. Runs locally without Docker.
 
 ## Commands
 
@@ -62,25 +62,28 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 
 ### Backend Modules (`backend/app/`)
 
-- `main.py` — FastAPI app entry point; mounts routers and serves `frontend/out/` at `/`; exposes `GET /api/health`
-- `auth.py` — `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`; `get_current_user` dependency used by protected routes
-- `board.py` — `GET /api/board`, `PUT /api/board`; `BoardData` Pydantic model shared with ai_router
-- `database.py` — SQLite init, `users`/`boards` tables, seed data, `get_db()` dependency
+- `main.py` — FastAPI entry point; mounts routers; serves `frontend/out/` at `/`; `GET /api/health`
+- `auth.py` — `/api/auth/login`, `/api/auth/logout`, `/api/auth/register`, `/api/auth/me`; `get_current_user` dependency; passwords hashed with PBKDF2-SHA256 (Python stdlib)
+- `board.py` — multi-board CRUD routes (`GET/POST /api/boards`, `GET/PUT/PATCH/DELETE /api/boards/{id}`); `Card` and `BoardData` Pydantic models; `fetch_board_content` / `save_board_content` helpers used by `ai_router.py`
+- `database.py` — SQLite init, schema, migration, `hash_password`/`verify_password`, seed data, `get_db()` dependency
 - `ai.py` — OpenAI client, `gpt-4o-mini` model, Structured Outputs (`AIChatResponse`)
-- `ai_router.py` — `POST /api/ai/chat`; reads board, calls `ai.chat()`, validates AI board output, saves if valid; caps conversation history at 40 messages (20 turns)
+- `ai_router.py` — `POST /api/ai/chat`; reads board, calls `ai.chat()`, merges existing card metadata (priority, due_date, labels) into AI output, validates, saves if valid; caps history at 40 messages
 
 ### Frontend Modules (`frontend/src/`)
 
-- `app/page.tsx` — root page; manages auth phase (`loading | unauthenticated | board-error | ready`)
-- `lib/api.ts` — all fetch calls (`getMe`, `login`, `logout`, `getBoard`, `saveBoard`, `chatWithBoard`)
-- `lib/kanban.ts` — `Card`, `Column`, `BoardData` types; default data; ID helpers; `moveCard` (handles same-column reorder and cross-column moves)
-- `components/KanbanBoard.tsx` — owns board state; drag-and-drop via `@dnd-kit/core` (`PointerSensor`, 6 px activation, `closestCorners`); all mutations follow: capture `prev = board` → compute `next` → `setBoard(next)` → `void persist(prev, next)`; on save failure `persist` calls `setBoard(prev)` to roll back. AI updates are the exception — backend already saved during the AI call, so `handleAiBoardUpdate` skips `persist()`.
-- `components/KanbanColumn.tsx` — column rendering, inline title editing, delegates add-card to `NewCardForm`
-- `components/KanbanCard.tsx` — draggable card, delete, inline edit form (title + details)
-- `components/KanbanCardPreview.tsx` — read-only card shadow rendered inside `DragOverlay` while dragging
-- `components/NewCardForm.tsx` — toggle-open form (title required, details optional) used by `KanbanColumn`
-- `components/AISidebar.tsx` — chat history, input, send; calls `chatWithBoard`; applies board updates
-- `components/LoginForm.tsx` — login UI
+- `app/page.tsx` — root page; manages phases: `loading | unauthenticated | board-selection | board-loading | board-error | ready`
+- `lib/api.ts` — all fetch calls: auth, board CRUD, AI chat
+- `lib/kanban.ts` — `Card`, `Column`, `BoardData`, `Priority` types; `LABEL_OPTIONS`; `moveCard`, `createId`, `matchesFilter`
+- `components/LoginForm.tsx` — toggles between sign-in and create-account modes
+- `components/BoardSelector.tsx` — lists boards, inline create-board form
+- `components/KanbanBoard.tsx` — owns board state; all mutations follow `prev → next → setBoard(next) → persist(prev, next)`; on failure rolls back to `prev`; AI updates skip `persist()` (backend already saved); holds filter state
+- `components/KanbanColumn.tsx` — column rendering, rename, delete with confirmation, applies card filter
+- `components/KanbanCard.tsx` — draggable card; view shows priority badge, due-date chip, label chips; edit has all fields; state initialized on open (no useEffect sync)
+- `components/KanbanCardPreview.tsx` — read-only card in `DragOverlay` while dragging
+- `components/NewCardForm.tsx` — toggle-open add-card form used by `KanbanColumn`
+- `components/AddColumnForm.tsx` — toggle-open tile for adding a new column
+- `components/FilterBar.tsx` — search text, priority filter chips, overdue toggle
+- `components/AISidebar.tsx` — chat history, input, send; passes `boardId` to `chatWithBoard`
 
 ### Data Model
 
@@ -89,19 +92,24 @@ Board state stored as JSON in SQLite `boards.content`. Shape:
 ```typescript
 type BoardData = {
   columns: { id: string; title: string; cardIds: string[] }[];
-  cards: Record<string, { id: string; title: string; details: string }>;
+  cards: Record<string, {
+    id: string; title: string; details: string;
+    priority?: "low"|"medium"|"high"|"critical"|null;
+    due_date?: string|null;
+    labels?: string[];
+  }>;
 }
 ```
 
-The AI returns cards as a flat list (OpenAI Structured Outputs schema constraint): `AIChatBoard.cards: list[AIChatCard]`. `ai_router.py` converts this to `{card.id: card.model_dump()}` before validating against `BoardData` and saving.
+The AI returns cards as a flat list (OpenAI Structured Outputs constraint). `ai_router.py` converts this to the dict shape, merges existing metadata, validates, and saves.
 
 ### Authentication
 
-Starlette `SessionMiddleware` with a signed cookie. `get_current_user` is a FastAPI dependency injected into protected routes. Session key defaults to `"dev-secret-change-in-production"` — override via `SESSION_SECRET_KEY` env var.
+Starlette `SessionMiddleware` with a signed cookie. Session key defaults to `"dev-secret-change-in-production"` — override via `SESSION_SECRET_KEY` env var. Passwords stored as PBKDF2-SHA256 hashes; verified at login via `verify_password()` in `database.py`.
 
 ### CSS Theming
 
-The frontend uses CSS custom properties defined in `globals.css` alongside Tailwind. Use these variables in `className` strings rather than raw hex values:
+Use CSS custom properties from `globals.css`:
 
 | Variable | Hex | Role |
 |---|---|---|
@@ -112,36 +120,34 @@ The frontend uses CSS custom properties defined in `globals.css` alongside Tailw
 | `--gray-text` | `#888888` | Muted / secondary text |
 | `--stroke` | — | Border color |
 | `--surface` | `#f7f8fb` | Card / panel background |
-| `--surface-strong` | `#ffffff` | Elevated surface (e.g. modals, active cards) |
+| `--surface-strong` | `#ffffff` | Elevated surface |
 | `--shadow` | — | Box-shadow shorthand |
 
-Fonts: `Space_Grotesk` → `font-display` class (headings), `Manrope` → body text.
+Fonts: `Space_Grotesk` → `font-display` (headings), `Manrope` → body text.
 
 ### Backend Test Fixture Chain
 
-Tests in `backend/tests/` use a three-level fixture chain:
-
 ```python
-test_db   # tmp_path SQLite, seeded via init_db()
-client    # FastAPI TestClient with get_db overridden to use test_db
-auth_client  # client pre-logged-in as "user" / "password"
+test_db          # tmp_path SQLite seeded via init_db()
+client           # TestClient with get_db overridden to test_db
+auth_client      # client pre-logged-in as "user" / "password"
+default_board_id # ID of the seeded board (use this, not hardcoded 1)
 ```
 
-Pass `auth_client` to any test that needs an authenticated session.
+Do not use `default_board_id` in unauthenticated tests — it triggers `auth_client` login and contaminates the session.
 
 ## Key Constraints
 
 - No Docker. Local scripts only.
 - `uv` for Python deps; `npm` for frontend.
-- API key is always server-side; never expose `OPENAI_API_KEY` to frontend code.
+- API key always server-side; never expose `OPENAI_API_KEY` in frontend code.
 - All API routes under `/api`. Frontend served at `/`.
-- Keep implementations simple. No features outside the MVP scope.
+- Keep implementations simple. No features outside the current scope.
 - Update `docs/PLAN.md` and `docs/ToDos.md` before starting implementation work.
-- Color scheme: accent yellow `#ecad0a`, blue `#209dd7`, purple `#753991`, dark navy `#032147`, gray `#888888`.
 
 ## Coding Approach
 
 - No emojis anywhere in the codebase or documentation.
-- When hitting issues, always identify the root cause before attempting a fix — prove it with evidence, then fix the root cause. Do not guess.
-- Never over-engineer. No unnecessary defensive programming, no extra features, no abstractions beyond what the task requires.
-- Do not start implementation work until the relevant planning documentation (`docs/PLAN.md`, `docs/ToDos.md`) is updated and approved.
+- Identify root cause before fixing — prove with evidence, then fix. Do not guess.
+- Never over-engineer. No unnecessary abstractions beyond what the task requires.
+- Do not start implementation work until planning docs are updated.

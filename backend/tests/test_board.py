@@ -282,3 +282,60 @@ def test_put_board_card_optional_fields_default_to_none(
     card = resp.json()["cards"]["c1"]
     assert card["priority"] is None
     assert card["due_date"] is None
+
+
+# --- Card labels tests ---
+
+
+def test_put_board_card_labels_saved_and_returned(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Labeled",
+                "details": "With labels",
+                "labels": ["bug", "frontend"],
+            }
+        },
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert card["labels"] == ["bug", "frontend"]
+
+
+def test_put_board_card_labels_defaults_to_empty_list(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "No labels", "details": "No labels here"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert card["labels"] == []
+
+
+def test_get_board_returns_labels(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Tagged",
+                "details": "Has labels",
+                "labels": ["feature", "backend"],
+            }
+        },
+    }
+    auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    resp = auth_client.get(f"/api/boards/{default_board_id}")
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert card["labels"] == ["feature", "backend"]

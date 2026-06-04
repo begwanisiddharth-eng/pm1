@@ -1,56 +1,54 @@
-# The Project Management MVP web app
+# The Project Management App
 
 ## Business Requirements
 
-This project is building a Project Management App. Key features:
-- A user can sign in
-- When signed in, the user sees a Kanban board representing their project
-- The Kanban board has fixed columns that can be renamed
-- The cards on the Kanban board can be moved with drag and drop, and edited
-- There is an AI chat feature in a sidebar; the AI is able to create, edit, and move one or more cards
+This project is a local Project Management App. Implemented features:
 
-## Limitations
-
-For the MVP, there will only be one sign in account, hardcoded to `user` and `password`, but the database will support multiple users for future work.
-
-For the MVP, there will only be one Kanban board per signed-in user.
-
-For the MVP, this will run locally. Do not use Docker or container infrastructure for this project unless the user explicitly changes this requirement later.
+- Users can register an account or sign in to an existing one.
+- Authenticated users see a board selector showing all their Kanban boards.
+- Each user can have multiple Kanban boards; they can create, rename, and delete boards.
+- On a board: columns can be added, renamed, deleted, and reordered.
+- Cards on the board can be moved with drag and drop, edited, created, and deleted.
+- Cards carry optional metadata: priority (low/medium/high/critical), due date, and labels.
+- A filter bar lets users search cards by text, filter by priority, and show overdue-only.
+- There is an AI chat sidebar; the AI can create, edit, move, and reorganize cards and columns.
+  The AI preserves card metadata (priority, due_date, labels) when updating the board.
 
 ## Technical Decisions
 
-- NextJS frontend
-- Python FastAPI backend, including serving the static NextJS site at `/`
-- Local development and runtime only; no Docker
-- Use `uv` for Python dependency management
-- Use OpenAI for AI calls
+- NextJS 16 frontend (TypeScript, Tailwind CSS, `@dnd-kit`)
+- Python FastAPI backend served with `uv`; serves the static NextJS export at `/`
+- SQLite database (`backend/pm.db`), auto-created and migrated on startup
+- Session auth via Starlette `SessionMiddleware`; passwords hashed with PBKDF2-SHA256 (stdlib)
+- OpenAI `gpt-4o-mini` with Structured Outputs for AI board updates
 - Read `OPENAI_API_KEY` from `.env` in the project root
-- Use `gpt-4o-mini` as the model
-- Use OpenAI Structured Outputs for AI responses that may update the Kanban board
-- Use a local SQLite database, creating a new database if it does not exist
-- Start and stop server scripts for Mac, PC, and Linux in `scripts/`
+- No Docker; local scripts only (`scripts/`)
+- `uv` for Python dependency management, `npm` for frontend
 
-## Starting Point
+## Constraints
 
-A working MVP of the frontend has been built and is already in `frontend/`. It is currently a pure frontend-only demo and needs to be connected to the local FastAPI backend.
+- Run locally without Docker or container infrastructure.
+- API key stays server-side only; never expose in frontend code.
+- All API routes under `/api`; frontend served at `/`.
+- No features outside the current scope unless explicitly requested.
 
 ## Color Scheme
 
-- Accent Yellow: `#ecad0a` - accent lines, highlights
-- Blue Primary: `#209dd7` - links, key sections
-- Purple Secondary: `#753991` - submit buttons, important actions
-- Dark Navy: `#032147` - main headings
-- Gray Text: `#888888` - supporting text, labels
+- Accent Yellow: `#ecad0a`
+- Blue Primary: `#209dd7`
+- Purple Secondary: `#753991`
+- Dark Navy: `#032147`
+- Gray Text: `#888888`
 
 ## Coding Standards
 
-1. Use latest versions of libraries and idiomatic approaches as of today.
-2. Keep it simple. Never over-engineer. Always simplify. No unnecessary defensive programming. No extra features.
-3. Be concise. Keep README minimal. No emojis ever.
-4. When hitting issues, always identify root cause before trying a fix. Do not guess. Prove with evidence, then fix the root cause.
-5. Do not start implementation work until the relevant planning documentation is updated and approved.
+1. Use latest idiomatic approaches. Keep it simple — never over-engineer.
+2. No unnecessary defensive programming, no extra features beyond the task.
+3. No emojis anywhere in code or docs.
+4. When hitting issues, prove the root cause with evidence before fixing.
+5. Update `docs/PLAN.md` and `docs/ToDos.md` before implementation work.
 
 ## Working Documentation
 
-All documents for planning and executing this project will be in the `docs/` directory.
-Review `docs/PLAN.md` and `docs/ToDos.md` before proceeding with implementation work.
+Planning and task tracking live in `docs/`. Review `docs/PLAN.md` and `docs/ToDos.md`
+before starting implementation. See `CLAUDE.md` for architecture details and commands.

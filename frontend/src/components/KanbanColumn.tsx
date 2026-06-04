@@ -2,23 +2,26 @@ import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { Card, Column, Priority } from "@/lib/kanban";
+import type { Card, CardFilter, Column, Priority } from "@/lib/kanban";
+import { matchesFilter } from "@/lib/kanban";
 import { KanbanCard } from "@/components/KanbanCard";
 import { NewCardForm } from "@/components/NewCardForm";
 
 type KanbanColumnProps = {
   column: Column;
   cards: Card[];
+  filter?: CardFilter;
   onRename: (columnId: string, title: string) => void;
   onAddCard: (columnId: string, title: string, details: string) => void;
   onDeleteCard: (columnId: string, cardId: string) => void;
-  onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null) => void;
+  onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null, labels: string[]) => void;
   onDeleteColumn: (columnId: string) => void;
 };
 
 export const KanbanColumn = ({
   column,
   cards,
+  filter,
   onRename,
   onAddCard,
   onDeleteCard,
@@ -28,6 +31,10 @@ export const KanbanColumn = ({
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [titleValue, setTitleValue] = useState(column.title);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const visibleCards = filter
+    ? cards.filter((card) => matchesFilter(card, filter))
+    : cards;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -116,7 +123,7 @@ export const KanbanColumn = ({
 
       <div className="mt-4 flex flex-1 flex-col gap-3">
         <SortableContext items={column.cardIds} strategy={verticalListSortingStrategy}>
-          {cards.map((card) => (
+          {visibleCards.map((card) => (
             <KanbanCard
               key={card.id}
               card={card}
@@ -128,6 +135,11 @@ export const KanbanColumn = ({
         {cards.length === 0 && !confirmDelete && (
           <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[var(--stroke)] px-3 py-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
             Drop a card here
+          </div>
+        )}
+        {cards.length > 0 && visibleCards.length === 0 && (
+          <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[var(--stroke)] px-3 py-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+            No cards match filter
           </div>
         )}
       </div>

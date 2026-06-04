@@ -3,6 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
 import type { Card, Priority } from "@/lib/kanban";
+import { LABEL_OPTIONS } from "@/lib/kanban";
 
 type KanbanCardProps = {
   card: Card;
@@ -13,6 +14,7 @@ type KanbanCardProps = {
     details: string,
     priority: Priority | null,
     dueDate: string | null,
+    labels: string[],
   ) => void;
 };
 
@@ -48,6 +50,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const [editDetails, setEditDetails] = useState("");
   const [editPriority, setEditPriority] = useState<Priority | null>(null);
   const [editDueDate, setEditDueDate] = useState("");
+  const [editLabels, setEditLabels] = useState<string[]>([]);
   const [titleError, setTitleError] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -63,8 +66,15 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
     setEditDetails(card.details);
     setEditPriority(card.priority ?? null);
     setEditDueDate(card.due_date ?? "");
+    setEditLabels(card.labels ?? []);
     setTitleError(false);
     setIsEditing(true);
+  };
+
+  const toggleLabel = (labelId: string) => {
+    setEditLabels((prev) =>
+      prev.includes(labelId) ? prev.filter((l) => l !== labelId) : [...prev, labelId]
+    );
   };
 
   const handleSave = () => {
@@ -73,7 +83,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
       setTitleError(true);
       return;
     }
-    onEdit(card.id, trimmed, editDetails, editPriority, editDueDate || null);
+    onEdit(card.id, trimmed, editDetails, editPriority, editDueDate || null, editLabels);
     setTitleError(false);
     setIsEditing(false);
   };
@@ -176,6 +186,30 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
             />
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
+              Labels
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {LABEL_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => toggleLabel(opt.id)}
+                  className={clsx(
+                    "rounded-full border px-2.5 py-0.5 text-xs font-semibold transition",
+                    editLabels.includes(opt.id)
+                      ? opt.color + " border-current"
+                      : "border-[var(--stroke)] text-[var(--gray-text)] hover:border-current"
+                  )}
+                  aria-pressed={editLabels.includes(opt.id)}
+                >
+                  {opt.text}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -202,7 +236,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
             <p className="mt-2 text-sm leading-6 text-[var(--gray-text)]">
               {card.details}
             </p>
-            {(card.priority || dueDateInfo) && (
+            {(card.priority || dueDateInfo || (card.labels && card.labels.length > 0)) && (
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {card.priority && (
                   <span
@@ -229,6 +263,21 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
                     {dueDateInfo.text}
                   </span>
                 )}
+                {card.labels?.map((labelId) => {
+                  const opt = LABEL_OPTIONS.find((l) => l.id === labelId);
+                  if (!opt) return null;
+                  return (
+                    <span
+                      key={labelId}
+                      className={clsx(
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        opt.color
+                      )}
+                    >
+                      {opt.text}
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>

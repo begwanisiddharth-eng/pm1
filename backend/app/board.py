@@ -17,6 +17,7 @@ class Card(BaseModel):
     details: str
     priority: Literal["low", "medium", "high", "critical"] | None = None
     due_date: str | None = None
+    labels: list[str] = []
 
 
 class Column(BaseModel):

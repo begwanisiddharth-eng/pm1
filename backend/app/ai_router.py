@@ -69,7 +69,7 @@ def ai_chat_endpoint(
             if len(card_ids) != len(set(card_ids)):
                 raise ValueError("AI response contains duplicate card IDs")
 
-            # Preserve card metadata (priority, due_date) from existing board
+            # Preserve card metadata (priority, due_date, labels) from existing board
             existing_board = BoardData.model_validate_json(board_json)
             existing_cards = existing_board.cards
 
@@ -80,6 +80,7 @@ def ai_chat_endpoint(
                 if existing:
                     card_dict["priority"] = existing.priority
                     card_dict["due_date"] = existing.due_date
+                    card_dict["labels"] = existing.labels
                 cards_dict[ai_card.id] = card_dict
 
             board_dict = {
