@@ -229,4 +229,62 @@ describe("KanbanBoard", () => {
     expect(within(column).getByText("Align roadmap themes")).toBeInTheDocument();
     expect(vi.mocked(saveBoard)).not.toHaveBeenCalled();
   });
+
+  it("sets a WIP limit on a column and saves", async () => {
+    renderBoard();
+    const column = getFirstColumn();
+    await userEvent.click(within(column).getByRole("button", { name: /set wip limit/i }));
+    const limitInput = within(column).getByLabelText("WIP limit");
+    await userEvent.clear(limitInput);
+    await userEvent.type(limitInput, "3");
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(vi.mocked(saveBoard)).toHaveBeenCalledWith(
+        BOARD_ID,
+        expect.objectContaining({
+          columns: expect.arrayContaining([
+            expect.objectContaining({ wipLimit: 3 }),
+          ]),
+        })
+      )
+    );
+  });
+
+  it("collapses a column and saves", async () => {
+    renderBoard();
+    const column = getFirstColumn();
+    const collapseBtn = within(column).getByRole("button", { name: /collapse column/i });
+    await userEvent.click(collapseBtn);
+    await waitFor(() =>
+      expect(vi.mocked(saveBoard)).toHaveBeenCalledWith(
+        BOARD_ID,
+        expect.objectContaining({
+          columns: expect.arrayContaining([
+            expect.objectContaining({ collapsed: true }),
+          ]),
+        })
+      )
+    );
+  });
+
+  it("opens shortcuts modal when ? key is pressed outside an input", async () => {
+    renderBoard();
+    await userEvent.keyboard("?");
+    expect(screen.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeInTheDocument();
+  });
+
+  it("opens shortcuts modal when help button is clicked", async () => {
+    renderBoard();
+    await userEvent.click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
+    expect(screen.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeInTheDocument();
+  });
+
+  it("does not open shortcuts modal when ? is typed inside an input", async () => {
+    renderBoard();
+    const column = getFirstColumn();
+    const titleInput = within(column).getByLabelText("Column title");
+    await userEvent.click(titleInput);
+    await userEvent.keyboard("?");
+    expect(screen.queryByRole("dialog", { name: /keyboard shortcuts/i })).not.toBeInTheDocument();
+  });
 });

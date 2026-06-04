@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -20,9 +20,9 @@ import { FilterBar } from "@/components/FilterBar";
 import { BoardStats } from "@/components/BoardStats";
 import { ArchivePanel } from "@/components/ArchivePanel";
 import { ChangePasswordModal } from "@/components/ChangePasswordModal";
+import { ShortcutsModal } from "@/components/ShortcutsModal";
 import { createId, moveCard, moveColumn, timeAgo, type BoardData, type ChecklistItem, type Comment, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
-import { useRef } from "react";
 import type { BoardSummary } from "@/lib/api";
 
 type KanbanBoardProps = {
@@ -62,7 +62,26 @@ export const KanbanBoard = ({
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | undefined>(initialUpdatedAt);
   const [confirmImport, setConfirmImport] = useState<BoardData | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "?") {
+        const target = e.target as HTMLElement;
+        if (
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+        setShowShortcuts(true);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -258,6 +277,30 @@ export const KanbanBoard = ({
       },
       columns: board.columns.map((c) =>
         c.id === columnId ? { ...c, cardIds: newCardIds } : c
+      ),
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
+  const handleSetWipLimit = (columnId: string, limit: number | null) => {
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      columns: board.columns.map((col) =>
+        col.id === columnId ? { ...col, wipLimit: limit } : col
+      ),
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
+  const handleToggleCollapse = (columnId: string) => {
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      columns: board.columns.map((col) =>
+        col.id === columnId ? { ...col, collapsed: !col.collapsed } : col
       ),
     };
     setBoard(next);
@@ -524,6 +567,15 @@ export const KanbanBoard = ({
                 onChange={handleImportFile}
                 aria-label="Import board JSON"
               />
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(true)}
+                aria-label="Keyboard shortcuts"
+                title="Keyboard shortcuts (?)"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--stroke)] text-sm font-semibold text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+              >
+                ?
+              </button>
               <div className="relative">
                 <button
                   type="button"
@@ -599,6 +651,8 @@ export const KanbanBoard = ({
                         onDuplicateCard={handleDuplicateCard}
                         onMoveCardToColumn={handleMoveCardToColumn}
                         onDeleteColumn={handleDeleteColumn}
+                        onSetWipLimit={handleSetWipLimit}
+                        onToggleCollapse={handleToggleCollapse}
                       />
                     </div>
                   ))}
@@ -660,6 +714,10 @@ export const KanbanBoard = ({
 
       {showChangePassword && (
         <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
+
+      {showShortcuts && (
+        <ShortcutsModal onClose={() => setShowShortcuts(false)} />
       )}
     </div>
   );

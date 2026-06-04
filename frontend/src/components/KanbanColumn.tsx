@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { CSS } from "@dnd-kit/utilities";
@@ -21,6 +23,8 @@ type KanbanColumnProps = {
   onDuplicateCard: (columnId: string, cardId: string) => void;
   onMoveCardToColumn: (cardId: string, fromColumnId: string, toColumnId: string) => void;
   onDeleteColumn: (columnId: string) => void;
+  onSetWipLimit: (columnId: string, limit: number | null) => void;
+  onToggleCollapse: (columnId: string) => void;
 };
 
 export const KanbanColumn = ({
@@ -35,6 +39,8 @@ export const KanbanColumn = ({
   onDuplicateCard,
   onMoveCardToColumn,
   onDeleteColumn,
+  onSetWipLimit,
+  onToggleCollapse,
 }: KanbanColumnProps) => {
   const {
     setNodeRef,
@@ -47,6 +53,8 @@ export const KanbanColumn = ({
   } = useSortable({ id: column.id });
   const [titleValue, setTitleValue] = useState(column.title);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editingWipLimit, setEditingWipLimit] = useState(false);
+  const [wipDraft, setWipDraft] = useState<string>(column.wipLimit != null ? String(column.wipLimit) : "");
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -56,6 +64,17 @@ export const KanbanColumn = ({
   const visibleCards = filter
     ? cards.filter((card) => matchesFilter(card, filter))
     : cards;
+
+  const wipLimit = column.wipLimit ?? null;
+  const isAtLimit = wipLimit !== null && cards.length === wipLimit;
+  const isOverLimit = wipLimit !== null && cards.length > wipLimit;
+  const isDisabledByWip = isAtLimit || isOverLimit;
+
+  const badgeClass = isOverLimit
+    ? "rounded-full px-2 py-0.5 text-xs font-semibold bg-red-50 text-red-600"
+    : isAtLimit
+    ? "rounded-full px-2 py-0.5 text-xs font-semibold bg-orange-50 text-orange-600"
+    : "rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs font-semibold text-[var(--gray-text)]";
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -71,6 +90,49 @@ export const KanbanColumn = ({
     }
   };
 
+  const commitWipLimit = () => {
+    const parsed = parseInt(wipDraft, 10);
+    if (wipDraft.trim() === "") {
+      onSetWipLimit(column.id, null);
+    } else if (!isNaN(parsed) && parsed > 0) {
+      onSetWipLimit(column.id, parsed);
+    } else {
+      setWipDraft(column.wipLimit != null ? String(column.wipLimit) : "");
+    }
+    setEditingWipLimit(false);
+  };
+
+  if (column.collapsed) {
+    return (
+      <section
+        ref={setNodeRef}
+        style={style}
+        className={clsx(
+          "flex w-12 cursor-pointer flex-col items-center rounded-3xl border border-[var(--stroke)] bg-[var(--surface-strong)] py-4 shadow-[var(--shadow)] transition",
+          isOver && "ring-2 ring-[var(--accent-yellow)]",
+          isDragging && "opacity-50"
+        )}
+        onClick={() => onToggleCollapse(column.id)}
+        aria-label={`Expand column ${column.title}`}
+        data-testid={`column-${column.id}`}
+      >
+        <div {...attributes} {...listeners} className="mb-3 h-2 w-6 cursor-grab rounded-full bg-[var(--accent-yellow)] active:cursor-grabbing" title="Drag to reorder column" />
+        <span
+          className={badgeClass}
+          aria-label={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
+        >
+          {cards.length}
+        </span>
+        <span
+          className="mt-3 flex-1 text-xs font-semibold text-[var(--navy-dark)]"
+          style={{ writingMode: "vertical-rl", textOrientation: "mixed", transform: "rotate(180deg)" }}
+        >
+          {column.title}
+        </span>
+      </section>
+    );
+  }
+
   return (
     <section
       ref={setNodeRef}
@@ -84,7 +146,7 @@ export const KanbanColumn = ({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div
               className="h-2 w-10 cursor-grab rounded-full bg-[var(--accent-yellow)] active:cursor-grabbing"
               title="Drag to reorder column"
@@ -92,11 +154,40 @@ export const KanbanColumn = ({
               {...listeners}
             />
             <span
-              className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs font-semibold text-[var(--gray-text)]"
+              className={badgeClass}
               aria-label={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
             >
               {cards.length}
             </span>
+            {wipLimit !== null && (
+              <span className="text-xs text-[var(--gray-text)]">/ {wipLimit}</span>
+            )}
+            {editingWipLimit ? (
+              <input
+                type="number"
+                min={1}
+                value={wipDraft}
+                onChange={(e) => setWipDraft(e.target.value)}
+                onBlur={commitWipLimit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitWipLimit();
+                  if (e.key === "Escape") { setWipDraft(column.wipLimit != null ? String(column.wipLimit) : ""); setEditingWipLimit(false); }
+                }}
+                placeholder="limit"
+                autoFocus
+                aria-label="WIP limit"
+                className="w-14 rounded border border-[var(--stroke)] px-1 py-0.5 text-xs text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setWipDraft(column.wipLimit != null ? String(column.wipLimit) : ""); setEditingWipLimit(true); }}
+                aria-label={wipLimit !== null ? `Edit WIP limit (currently ${wipLimit})` : "Set WIP limit"}
+                className="rounded px-1 py-0.5 text-[10px] text-[var(--gray-text)] hover:text-[var(--primary-blue)]"
+              >
+                {wipLimit !== null ? "Edit limit" : "Set limit"}
+              </button>
+            )}
           </div>
           <input
             value={titleValue}
@@ -109,7 +200,18 @@ export const KanbanColumn = ({
             aria-label="Column title"
           />
         </div>
-        <div className="flex-shrink-0 pt-1">
+        <div className="flex flex-shrink-0 items-center gap-1 pt-1">
+          <button
+            type="button"
+            onClick={() => onToggleCollapse(column.id)}
+            aria-label={`Collapse column ${column.title}`}
+            title="Collapse column"
+            className="rounded-lg border border-transparent p-1 text-[var(--gray-text)] transition hover:border-[var(--stroke)] hover:text-[var(--navy-dark)]"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 7h8M3 4h8M3 10h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+          </button>
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <button
@@ -183,6 +285,7 @@ export const KanbanColumn = ({
       </div>
       <NewCardForm
         onAdd={(title, details) => onAddCard(column.id, title, details)}
+        disabled={isDisabledByWip}
       />
     </section>
   );

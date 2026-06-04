@@ -83,6 +83,8 @@ export type Column = {
   id: string;
   title: string;
   cardIds: string[];
+  wipLimit?: number | null;
+  collapsed?: boolean;
 };
 
 export type BoardData = {

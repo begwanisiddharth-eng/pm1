@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Summary
 
-A local Project Management app: multiple Kanban boards per user, drag-and-drop, inline card editing (priority, due date, labels), session-based auth with registration, SQLite persistence, and an OpenAI-powered AI sidebar. Runs locally without Docker.
+A local Project Management app: multiple Kanban boards per user, drag-and-drop columns and cards, rich inline card editing (priority, due date, labels, checklist, comments, color accent), session-based auth with registration, SQLite persistence, and an OpenAI-powered AI sidebar. Runs locally without Docker.
 
 ## Commands
 
@@ -63,30 +63,31 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 ### Backend Modules (`backend/app/`)
 
 - `main.py` — FastAPI entry point; mounts routers; serves `frontend/out/` at `/`; `GET /api/health`
-- `auth.py` — `/api/auth/login`, `/api/auth/logout`, `/api/auth/register`, `/api/auth/me`, `PATCH /api/auth/password`; `get_current_user` dependency; passwords hashed with PBKDF2-SHA256 (Python stdlib)
-- `board.py` — multi-board CRUD routes (`GET/POST /api/boards`, `GET/PUT/PATCH/DELETE /api/boards/{id}`); `Card` and `BoardData` Pydantic models; `fetch_board_content` / `save_board_content` helpers used by `ai_router.py`
+- `auth.py` — `/api/auth/login`, `/api/auth/logout`, `/api/auth/register`, `/api/auth/me`, `PATCH /api/auth/password`; `get_current_user` dependency (defined before route handlers to avoid forward-reference issues); passwords hashed with PBKDF2-SHA256 (Python stdlib)
+- `board.py` — multi-board CRUD routes (`GET/POST /api/boards`, `GET/PUT/PATCH/DELETE /api/boards/{id}`); Pydantic models: `ChecklistItem`, `Comment`, `Card`, `Column`, `BoardData`; `fetch_board_content` / `save_board_content` helpers used by `ai_router.py`
 - `database.py` — SQLite init, schema, migration, `hash_password`/`verify_password`, seed data, `get_db()` dependency
 - `ai.py` — OpenAI client, `gpt-4o-mini` model, Structured Outputs (`AIChatResponse`)
-- `ai_router.py` — `POST /api/ai/chat`; reads board, calls `ai.chat()`, merges existing card metadata (priority, due_date, labels) into AI output, validates, saves if valid; caps history at 40 messages
+- `ai_router.py` — `POST /api/ai/chat`; reads board (excluding archived cards), calls `ai.chat()`, merges all existing card metadata (priority, due_date, labels, checklist, comments, color) into AI output, validates, saves if valid; caps history at 40 messages
 
 ### Frontend Modules (`frontend/src/`)
 
-- `app/page.tsx` — root page; manages phases: `loading | unauthenticated | board-selection | board-loading | board-error | ready`
-- `lib/api.ts` — all fetch calls: auth, board CRUD, AI chat
-- `lib/kanban.ts` — `Card`, `Column`, `BoardData`, `Priority` types; `LABEL_OPTIONS`; `moveCard`, `createId`, `matchesFilter`
+- `app/page.tsx` — root page; manages phases: `loading | unauthenticated | board-selection | board-loading | board-error | ready`; passes `initialUpdatedAt` to `KanbanBoard`
+- `lib/api.ts` — all fetch calls: auth (`login`, `logout`, `register`, `getMe`, `changePassword`), board CRUD (`listBoards`, `getBoard`, `saveBoard`, `createBoard`, `renameBoard`, `deleteBoard`), AI (`chatWithBoard`)
+- `lib/kanban.ts` — types (`Card`, `Column`, `BoardData`, `Priority`, `ChecklistItem`, `Comment`, `CardFilter`); constants (`LABEL_OPTIONS`, `CARD_COLORS`); helpers (`moveCard`, `moveColumn`, `createId`, `matchesFilter`, `timeAgo`)
 - `components/LoginForm.tsx` — toggles between sign-in and create-account modes
-- `components/BoardSelector.tsx` — lists boards with last-updated timestamp, inline create-board form
-- `components/KanbanBoard.tsx` — owns board state; all mutations follow `prev → next → setBoard(next) → persist(prev, next)`; on failure rolls back to `prev`; AI updates skip `persist()` (backend already saved); holds filter state; Export JSON and Import JSON buttons in header
-- `components/KanbanColumn.tsx` — column rendering, rename, delete with confirmation, applies card filter; card count badge in header; empty-state prompt when zero visible cards
-- `components/KanbanCard.tsx` — draggable card; view shows accent color strip, priority badge, due-date chip, label chips, checklist progress, comment count, duplicate button; edit has all fields including checklist items and comments; state initialized on open (no useEffect sync)
+- `components/BoardSelector.tsx` — lists boards with relative last-updated timestamps; inline create-board form
+- `components/KanbanBoard.tsx` — owns board state; all mutations follow `prev → next → setBoard(next) → persist(prev, next)`; on failure rolls back to `prev`; AI updates skip `persist()` (backend already saved); holds filter state; Export JSON and Import JSON buttons; profile dropdown; last-updated display
+- `components/KanbanColumn.tsx` — column rendering, rename, delete with confirmation; card count badge; WIP limit setting and visual warning; collapse/expand toggle; empty-state prompt; applies card filter; passes searchQuery to cards
+- `components/KanbanCard.tsx` — draggable card; view mode: accent color top border strip, `HighlightText` for title/details, priority badge, due-date chip, label chips, checklist progress chip, comment count chip, action buttons (Edit, Copy, Move, Archive); edit mode: all fields including color picker, checklist, comments; state initialized on open (no useEffect sync); `onDuplicate` prop
 - `components/KanbanCardPreview.tsx` — read-only card in `DragOverlay` while dragging
-- `components/NewCardForm.tsx` — toggle-open add-card form used by `KanbanColumn`
-- `components/AddColumnForm.tsx` — toggle-open tile for adding a new column
-- `components/FilterBar.tsx` — search text, priority filter chips, overdue toggle; active text filter highlights matching text in cards via `HighlightText` helper
-- `components/AISidebar.tsx` — chat history, input, send, clear-chat button; passes `boardId` to `chatWithBoard`
+- `components/NewCardForm.tsx` — toggle-open add-card form; Escape closes, Enter submits, auto-focuses title
+- `components/AddColumnForm.tsx` — toggle-open tile for adding a new column; Escape closes, Enter submits
+- `components/FilterBar.tsx` — search text input, priority filter chips, overdue toggle, clear button
+- `components/AISidebar.tsx` — chat history, input (Enter sends, Shift+Enter newline), Send button, Clear button; passes `boardId` to `chatWithBoard`
 - `components/BoardStats.tsx` — shows total cards, overdue count, checklist completion in board header
-- `components/ArchivePanel.tsx` — collapsible panel listing archived cards; restore button per card
-- `components/ChangePasswordModal.tsx` — modal for changing password; requires current password + new password (min 6 chars)
+- `components/ArchivePanel.tsx` — collapsible panel listing archived cards; Restore and Delete per card
+- `components/ChangePasswordModal.tsx` — modal for changing password; current/new/confirm fields; inline validation; min 6 chars; success then auto-close
+- `components/ShortcutsModal.tsx` — keyboard shortcut reference modal; opened by `?` key or help button; closed by Escape
 
 ### Data Model
 
@@ -94,7 +95,13 @@ Board state stored as JSON in SQLite `boards.content`. Shape:
 
 ```typescript
 type BoardData = {
-  columns: { id: string; title: string; cardIds: string[] }[];
+  columns: {
+    id: string;
+    title: string;
+    cardIds: string[];
+    wipLimit?: number | null;
+    collapsed?: boolean;
+  }[];
   cards: Record<string, {
     id: string; title: string; details: string;
     priority?: "low"|"medium"|"high"|"critical"|null;
@@ -102,17 +109,19 @@ type BoardData = {
     labels?: string[];
     checklist?: { id: string; text: string; done: boolean }[];
     comments?: { id: string; text: string; created_at: string }[];
-    color?: string | null;
+    color?: string|null;
     archived?: boolean;
   }>;
-  description?: string;
+  description?: string|null;
   archivedCardIds?: string[];
 }
 ```
 
 `archived: true` cards are removed from column `cardIds` and listed in `archivedCardIds`. The archive panel shows them and lets users restore them.
 
-The AI returns cards as a flat list (OpenAI Structured Outputs constraint). `ai_router.py` converts this to the dict shape, merges existing metadata (priority, due_date, labels, checklist), validates, and saves. Archived cards are not sent to the AI.
+Columns have optional `wipLimit` (max active card count) and `collapsed` (whether the column is shown as a slim strip). Both are stored in the board JSON.
+
+The AI returns cards as a flat list (OpenAI Structured Outputs constraint). `ai_router.py` converts this to the dict shape, merges existing metadata (priority, due_date, labels, checklist, comments, color), validates, and saves. Archived cards are not sent to the AI.
 
 ### Authentication
 

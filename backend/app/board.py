@@ -40,6 +40,8 @@ class Column(BaseModel):
     id: str
     title: str
     cardIds: list[str]
+    wipLimit: int | None = None
+    collapsed: bool = False
 
 
 class BoardData(BaseModel):

@@ -4,9 +4,10 @@ const initialFormState = { title: "", details: "" };
 
 type NewCardFormProps = {
   onAdd: (title: string, details: string) => void;
+  disabled?: boolean;
 };
 
-export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
+export const NewCardForm = ({ onAdd, disabled }: NewCardFormProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formState, setFormState] = useState(initialFormState);
 
@@ -68,6 +69,10 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
             </button>
           </div>
         </form>
+      ) : disabled ? (
+        <p className="mt-1 text-center text-xs text-[var(--gray-text)]">
+          Column at WIP limit
+        </p>
       ) : (
         <button
           type="button"

@@ -1,249 +1,59 @@
-# ToDos
+# ToDos: Final Iteration
 
-This file tracks the work required to complete the Project Management MVP. Mark items complete as they are finished.
+Column WIP limits, column collapse, and keyboard shortcut reference modal.
 
-## Part 1: Planning
+---
 
-- [x] Update root `AGENTS.md` for local non-Docker OpenAI setup.
-- [x] Expand `docs/PLAN.md` with detailed checklists, tests, and success criteria.
-- [x] Create `docs/ToDos.md`.
-- [x] Create `frontend/AGENTS.md` describing the existing frontend.
-- [x] Ask the user to review and approve the plan before application code begins.
+## Backend
 
-## Part 2: Local Scaffolding
+- [ ] Extend `Column` Pydantic model in `board.py`: add `wipLimit: int | None = None` and `collapsed: bool = False`.
+- [ ] Add backend test: `PUT /api/boards/{id}` with `wipLimit` set on a column round-trips correctly.
+- [ ] Add backend test: `wipLimit` defaults to `null` when omitted from the column.
+- [ ] Add backend test: `PUT /api/boards/{id}` with `collapsed: true` on a column round-trips correctly.
+- [ ] Add backend test: `collapsed` defaults to `false` when omitted from the column.
 
-- [x] Set up FastAPI backend in `backend/`.
-- [x] Add Python project configuration using `uv`.
-- [x] Add FastAPI app entrypoint.
-- [x] Add `/api/health`.
-- [x] Configure static file serving at `/`.
-- [x] Add temporary static HTML for the first backend smoke test.
-- [x] Add Windows start script.
-- [x] Add Windows stop script.
-- [x] Add macOS start script.
-- [x] Add macOS stop script.
-- [x] Add Linux start script.
-- [x] Add Linux stop script.
-- [x] Add backend smoke tests.
+## Frontend — Data Layer
 
-## Part 3: Add Existing Frontend
+- [ ] Extend `Column` type in `lib/kanban.ts`: add `wipLimit?: number | null` and `collapsed?: boolean`.
 
-- [x] Review existing frontend structure.
-- [x] Configure NextJS static export.
-- [x] Add frontend build step.
-- [x] Serve built frontend through FastAPI.
-- [x] Confirm Kanban board loads at `/`.
-- [x] Run frontend unit tests.
-- [x] Run frontend Playwright tests.
-- [x] Run backend static-serving smoke test.
+## Frontend — WIP Limits
 
-## Part 4: Fake User Sign-In Experience
+- [ ] `components/KanbanColumn.tsx`: add `onSetWipLimit: (columnId: string, limit: number | null) => void` prop.
+- [ ] `components/KanbanColumn.tsx`: add inline WIP limit editor in the column header (number input shown on click; Enter/blur saves; Escape cancels; clear/empty removes the limit).
+- [ ] `components/KanbanColumn.tsx`: apply colour to card count badge based on WIP state — normal when no limit or under limit, amber (`text-orange-600 bg-orange-50`) when at limit, red (`text-red-600 bg-red-50`) when over limit.
+- [ ] `components/NewCardForm.tsx`: accept `disabled?: boolean` prop; when `true`, hide or disable the "Add a card" open button and show a brief message ("Column at WIP limit").
+- [ ] `components/KanbanColumn.tsx`: pass `disabled` to `NewCardForm` when `cards.length >= column.wipLimit` (and `wipLimit` is set).
+- [ ] `components/KanbanBoard.tsx`: add `handleSetWipLimit(columnId, limit)` — updates the matching column's `wipLimit` and calls `persist`.
+- [ ] `components/KanbanBoard.tsx`: pass `onSetWipLimit={handleSetWipLimit}` to each `KanbanColumn`.
 
-- [x] Add backend login endpoint.
-- [x] Add backend logout endpoint.
-- [x] Add backend current-user endpoint.
-- [x] Implement local cookie session.
-- [x] Add frontend login screen.
-- [x] Add frontend logout action.
-- [x] Protect board API routes.
-- [x] Protect AI API routes.
-- [x] Add backend auth tests.
-- [x] Add frontend auth tests.
-- [x] Add Playwright auth tests.
+## Frontend — Column Collapse
 
-## Part 5: Database Modeling
+- [ ] `components/KanbanColumn.tsx`: add `onToggleCollapse: (columnId: string) => void` prop.
+- [ ] `components/KanbanColumn.tsx`: add a collapse/expand chevron button in the column header.
+- [ ] `components/KanbanColumn.tsx`: when `column.collapsed` is true, render a slim vertical strip showing only the rotated column title and card count badge; hide cards, add-card form, and delete button.
+- [ ] `components/KanbanBoard.tsx`: add `handleToggleCollapse(columnId)` — toggles `collapsed` on the matching column and calls `persist`.
+- [ ] `components/KanbanBoard.tsx`: pass `onToggleCollapse={handleToggleCollapse}` to each `KanbanColumn`.
 
-- [x] Create database design document in `docs/`.
-- [x] Define `users` table.
-- [x] Define `boards` table.
-- [x] Define board JSON shape.
-- [x] Define default MVP user seed.
-- [x] Define default MVP board seed.
-- [x] Ask user to approve database design.
+## Frontend — Keyboard Shortcut Reference
 
-## Part 6: Backend Board API
+- [ ] `components/ShortcutsModal.tsx` (new): render a modal with a two-column shortcut table grouped by context (Global, Card edit, New card form, Add column, Board name, AI sidebar, Column rename). Backdrop click and Escape close it.
+- [ ] `components/KanbanBoard.tsx`: add `showShortcuts` boolean state.
+- [ ] `components/KanbanBoard.tsx`: add `keydown` handler on `window` for `?` key that sets `showShortcuts(true)`, guarded so it does not fire when the event target is an input, textarea, or has `contenteditable`.
+- [ ] `components/KanbanBoard.tsx`: add a `?` help button in the board header that opens the shortcuts modal.
+- [ ] `components/KanbanBoard.tsx`: render `<ShortcutsModal onClose={() => setShowShortcuts(false)} />` when `showShortcuts` is true.
 
-- [x] Add SQLite initialization.
-- [x] Add MVP user seeding.
-- [x] Add MVP board seeding.
-- [x] Add `GET /api/board`.
-- [x] Add `PUT /api/board`.
-- [x] Require authentication for board routes.
-- [x] Validate board JSON before saving.
-- [x] Add backend database tests.
-- [x] Add backend board API tests.
+## Tests
 
-## Part 7: Frontend + Backend
+- [ ] `backend/tests/test_board.py`: 4 new tests for `wipLimit` and `collapsed` round-trips (74 backend tests total).
+- [ ] `frontend/src/components/KanbanBoard.test.tsx`: test that setting a WIP limit calls `saveBoard` with the updated limit.
+- [ ] `frontend/src/components/KanbanBoard.test.tsx`: test that toggling column collapse calls `saveBoard`.
+- [ ] `frontend/src/components/KanbanBoard.test.tsx`: test that the `?` key opens the shortcuts modal.
+- [ ] `frontend/src/components/KanbanBoard.test.tsx`: test that the help button opens the shortcuts modal.
+- [ ] `frontend/src/components/ShortcutsModal.test.tsx` (new): test that the modal renders shortcut rows, Escape closes it, and backdrop click closes it.
 
-- [x] Load board from backend after sign in.
-- [x] Save board changes to backend.
-- [x] Preserve column rename workflow.
-- [x] Preserve add card workflow.
-- [x] Preserve delete card workflow.
-- [x] Preserve drag/drop workflow.
-- [x] Add card editing (inline edit of title and details).
-- [x] Add board loading state.
-- [x] Add board error state.
-- [x] Add frontend API integration tests.
-- [x] Add frontend card edit tests.
-- [x] Add Playwright persistence tests.
+## Final Verification
 
-## Part 8: AI Connectivity
-
-- [x] Add OpenAI Python SDK.
-- [x] Load `OPENAI_API_KEY` from project root `.env`.
-- [x] Configure model as `gpt-4o-mini`.
-- [x] Add backend AI service module.
-- [x] Add mocked backend AI tests.
-- [x] Add manual or gated `2+2` OpenAI connectivity test.
-- [x] Confirm API key is never exposed to frontend.
-
-## Part 9: AI Structured Board Updates
-
-- [x] Add `POST /api/ai/chat`.
-- [x] Send user message to OpenAI.
-- [x] Send conversation history to OpenAI.
-- [x] Send current board JSON to OpenAI.
-- [x] Use Structured Outputs.
-- [x] Require assistant message in AI response.
-- [x] Allow optional complete updated board JSON in AI response.
-- [x] Validate AI board output before saving.
-- [x] Save valid AI board updates.
-- [x] Reject invalid AI board updates without corrupting saved board.
-- [x] Add backend AI chat tests.
-
-## Part 10: AI Sidebar UI
-
-- [x] Add AI sidebar to board screen.
-- [x] Display conversation history.
-- [x] Add chat input.
-- [x] Add send button.
-- [x] Connect sidebar to `POST /api/ai/chat`.
-- [x] Show AI loading state.
-- [x] Show AI error state.
-- [x] Apply returned board updates automatically.
-- [x] Refresh board UI after AI changes.
-- [x] Add frontend AI sidebar tests.
-- [x] Add Playwright AI sidebar test with mocked backend.
-- [x] Run manual integration test with real OpenAI.
-
-## Part 11: User Management & Multiple Boards
-
-- [x] Add password hashing to users table (`pbkdf2:sha256`).
-- [x] Add database migration for existing databases (password_hash, board name columns).
-- [x] Update login to verify hashed password from database.
-- [x] Add `POST /api/auth/register` endpoint (username + password, min lengths enforced).
-- [x] Registration creates an initial "My Board" for new users.
-- [x] Add registration form to LoginForm component (toggle between sign-in and create account).
-- [x] Add `name` column to boards table.
-- [x] Add `GET /api/boards` — list user's boards (id, name, updated_at).
-- [x] Add `POST /api/boards` — create a new named board.
-- [x] Add `GET /api/boards/{board_id}` — get board content (auth + ownership enforced).
-- [x] Add `PUT /api/boards/{board_id}` — update board content.
-- [x] Add `PATCH /api/boards/{board_id}/name` — rename a board.
-- [x] Add `DELETE /api/boards/{board_id}` — delete board (blocked if it's the user's only board).
-- [x] Update `POST /api/ai/chat` to accept `board_id` (verified against current user).
-- [x] Add BoardSelector component (shows board list, create-board flow).
-- [x] Update page.tsx for board-selection phase (auto-selects if one board, shows selector if multiple).
-- [x] Update KanbanBoard — inline board rename, delete board with confirmation, "All boards" back button.
-- [x] Update AISidebar to accept and pass `boardId` to chat API.
-- [x] Cross-user board isolation enforced (ownership check on all board routes).
-- [x] Add comprehensive backend tests for all new routes (48 passing).
-- [x] Update frontend tests for new API signatures (19 passing).
-- [x] ESLint clean (0 errors, 0 warnings).
-- [x] Frontend builds successfully with TypeScript.
-
-## Part 12: Card Labels, Filters, Column Reordering, Checklists, and Board Stats
-
-### Completed (Iteration 3)
-
-- [x] Add `labels: list[str] = []` to backend `Card` model.
-- [x] Preserve `labels` in AI board merges alongside priority and due_date.
-- [x] Add backend label round-trip tests (saved, returned, defaults to `[]`).
-- [x] Add `labels?: string[]` to frontend `Card` type in `kanban.ts`.
-- [x] Add `LABEL_OPTIONS` constant (6 predefined labels with Tailwind colors).
-- [x] Add `CardFilter` type and `matchesFilter` helper to `kanban.ts`.
-- [x] Update `KanbanCard` edit mode: label multi-select (toggle chips).
-- [x] Update `KanbanCard` view mode: label chips displayed below priority/due-date.
-- [x] Create `FilterBar` component: search input, priority chips, overdue toggle, clear button.
-- [x] Wire filter state into `KanbanBoard`; pass `filter` prop to each `KanbanColumn`.
-- [x] Apply `matchesFilter` in `KanbanColumn` to show only matching cards.
-- [x] Add 8 `matchesFilter` unit tests to `kanban.test.ts`.
-- [x] ESLint clean; build succeeds; 55 backend + 27 frontend tests passing.
-
-### Iteration 4 (completed)
-
-- [x] Backend: add `ChecklistItem` Pydantic model (`id`, `text`, `done`).
-- [x] Backend: add `checklist: list[ChecklistItem] = []` to `Card` model.
-- [x] Backend: preserve `checklist` in AI board merges.
-- [x] Backend: add checklist round-trip tests and default-empty-list test (58 backend tests passing).
-- [x] Frontend `kanban.ts`: add `ChecklistItem` type and `checklist?` to `Card`.
-- [x] Frontend `kanban.ts`: add `moveColumn` helper.
-- [x] Frontend `KanbanBoard.tsx`: column drag-and-drop reordering via `SortableContext` + `horizontalListSortingStrategy`; `handleDragEnd` distinguishes card vs column moves.
-- [x] Frontend `KanbanColumn.tsx`: replaced `useDroppable` with `useSortable`; yellow pill is the drag handle.
-- [x] Frontend `KanbanCard.tsx`: checklist section in edit mode (add item, toggle done, remove item).
-- [x] Frontend `KanbanCard.tsx`: checklist progress chip in view mode (e.g. "2 / 4", green when all done).
-- [x] Frontend `BoardStats.tsx`: new component — total cards, overdue count, checklist completion.
-- [x] Frontend `KanbanBoard.tsx`: render `BoardStats` in board header; import `BoardStats`.
-- [x] Frontend tests: 4 `moveColumn` unit tests; checklist field in edit assertion; 58 backend + 31 frontend passing.
-- [x] ESLint clean; build succeeds.
-
-## Part 13: Card Archive, Board Description, and Move-to-Column (Iteration 5)
-
-- [x] Backend: add `archived: bool = False` to `Card` model.
-- [x] Backend: add `description: str | None = None` and `archivedCardIds: list[str] = []` to `BoardData`.
-- [x] Backend: filter archived cards from board JSON before sending to AI; re-add archived cards to merged board.
-- [x] Backend: add 4 archive/description round-trip tests (62 backend tests total).
-- [x] Frontend `kanban.ts`: add `archived?` to `Card`; `archivedCardIds?` and `description?` to `BoardData`.
-- [x] Frontend `KanbanCard.tsx`: replace "Remove" with "Archive"; add "Move to..." dropdown per card.
-- [x] Frontend `KanbanBoard.tsx`: `handleArchiveCard`, `handleRestoreCard`, `handleDeleteArchivedCard`, `handleMoveCardToColumn`; board description inline edit; `handleSaveDescription`.
-- [x] Frontend `ArchivePanel.tsx`: collapsible panel; Restore and Delete per archived card.
-- [x] Frontend tests: archive button test updated; 31 frontend tests passing.
-- [x] ESLint clean (0 errors, 0 warnings); build succeeds.
-
-## Part 14: Password Change, Keyboard Shortcuts, and Overdue Highlighting (Iteration 6)
-
-- [x] Backend: add `PATCH /api/auth/password` (current_password, new_password); validate current, enforce min-length 6 on new, update hash.
-- [x] Backend: add 4 tests for password change (success, wrong current, short new, unauthenticated).
-- [x] Frontend `lib/api.ts`: add `changePassword(currentPassword, newPassword)` fetch helper.
-- [x] Frontend `ChangePasswordModal.tsx`: modal with current/new/confirm fields; inline validation; success then close.
-- [x] Frontend `KanbanBoard.tsx`: profile dropdown (username initial avatar) in board header; "Change password" + "Sign out" options.
-- [x] Frontend `KanbanCard.tsx`: Escape in edit mode cancels; Enter in title field saves (was already in place).
-- [x] Frontend `NewCardForm.tsx`: Escape closes form; auto-focus on title input.
-- [x] Frontend `AddColumnForm.tsx`: Escape closes form; Enter submits (was already in place).
-- [x] Frontend `KanbanCard.tsx`: overdue detection — red inset left shadow when past today.
-- [x] Frontend tests: 7 ChangePasswordModal tests; profile dropdown test in KanbanBoard (8 tests).
-- [x] ESLint clean (0 errors, 0 warnings); build succeeds; 66 backend tests, 39 frontend tests passing.
-
-## Part 15: Card Duplication, AI Clear Chat, and Column Empty State (Iteration 7)
-
-- [x] Frontend `KanbanBoard.tsx`: add `handleDuplicateCard(cardId, columnId)`.
-- [x] Frontend `KanbanCard.tsx`: add "Duplicate" button in view mode; `onDuplicate` prop.
-- [x] Frontend `KanbanColumn.tsx`: card count badge in header.
-- [x] Frontend `KanbanColumn.tsx`: empty-state prompt when zero visible cards.
-- [x] Frontend `AISidebar.tsx`: "Clear chat" button clears local messages state.
-- [x] Frontend tests: duplicate card test; clear chat test.
-- [x] ESLint clean; build succeeds; 66 backend tests, 41 frontend tests passing.
-
-## Part 16: Card Comments, Card Color Accents, and Board Export (Iteration 8)
-
-- [x] Backend: add `color?: str | None` and `comments: list[Comment] = []` to `Card` model.
-- [x] Backend: `Comment` Pydantic model (`id`, `text`, `created_at`).
-- [x] Backend: preserve `color` and `comments` in AI board merges.
-- [x] Backend: round-trip tests for color and comments (4 new tests, 70 total).
-- [x] Frontend `kanban.ts`: add `color?` and `comments?` to `Card`; add `Comment` type; add `CARD_COLORS`.
-- [x] Frontend `KanbanCard.tsx`: accent color top border in view mode; color picker (6 swatches + None) in edit mode.
-- [x] Frontend `KanbanCard.tsx`: comment count chip in view; comment list + add form in edit mode.
-- [x] Frontend `KanbanBoard.tsx`: "Export JSON" button downloads board as JSON file.
-- [x] Frontend tests: color picker test; add comment test (2 new tests, 43 total).
-- [x] ESLint clean; build succeeds; 70 backend tests, 43 frontend tests passing.
-
-## Part 17: Board Import, Search Highlight, and Last-Updated Timestamps (Iteration 9)
-
-- [x] Frontend `lib/kanban.ts`: add `timeAgo(isoString)` utility.
-- [x] Frontend `BoardSelector.tsx`: show relative "last updated" time per board.
-- [x] Frontend `KanbanBoard.tsx`: show relative "last updated" in board header; refresh after save.
-- [x] Frontend `KanbanBoard.tsx`: "Import JSON" button; parse, validate, confirm, call saveBoard.
-- [x] Frontend `KanbanCard.tsx`: add `HighlightText` helper; highlight `filter.search` matches in title and details.
-- [x] Frontend tests: 7 timeAgo unit tests (22 kanban.test.ts tests total); 50 frontend tests passing.
-- [x] ESLint clean; build succeeds; 70 backend tests, 50 frontend tests passing.
+- [ ] ESLint: 0 errors, 0 warnings.
+- [ ] TypeScript build: succeeds with no type errors (`npm run build`).
+- [ ] Backend tests: 74 passing (`uv run pytest`).
+- [ ] Frontend tests: 57+ passing (`npm run test:unit`).

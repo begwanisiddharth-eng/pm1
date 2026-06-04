@@ -524,3 +524,54 @@ def test_put_board_card_comments_defaults_to_empty(
     resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
     assert resp.status_code == 200
     assert resp.json()["cards"]["c1"]["comments"] == []
+
+
+# --- Column wipLimit and collapsed tests ---
+
+
+def test_put_board_column_wip_limit_saved_and_returned(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"], "wipLimit": 3}],
+        "cards": {"c1": {"id": "c1", "title": "Task", "details": "Do it"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["columns"][0]["wipLimit"] == 3
+
+
+def test_put_board_column_wip_limit_defaults_to_null(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "Task", "details": "Do it"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["columns"][0]["wipLimit"] is None
+
+
+def test_put_board_column_collapsed_saved_and_returned(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"], "collapsed": True}],
+        "cards": {"c1": {"id": "c1", "title": "Task", "details": "Do it"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["columns"][0]["collapsed"] is True
+
+
+def test_put_board_column_collapsed_defaults_to_false(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "Task", "details": "Do it"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["columns"][0]["collapsed"] is False
