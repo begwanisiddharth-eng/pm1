@@ -11,6 +11,7 @@ type KanbanCardProps = {
   card: Card;
   otherColumns: ColumnOption[];
   onArchive: (cardId: string) => void;
+  onDuplicate: (cardId: string) => void;
   onMoveToColumn: (cardId: string, targetColumnId: string) => void;
   onEdit: (
     cardId: string,
@@ -49,7 +50,7 @@ const formatDueDate = (dateStr: string): { text: string; overdue: boolean; soon:
   return { text, overdue: diffDays < 0, soon: diffDays >= 0 && diffDays <= 2 };
 };
 
-export const KanbanCard = ({ card, otherColumns, onArchive, onMoveToColumn, onEdit }: KanbanCardProps) => {
+export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveToColumn, onEdit }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
@@ -391,6 +392,14 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onMoveToColumn, onEd
               aria-label={`Edit ${card.title}`}
             >
               Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onDuplicate(card.id)}
+              className="rounded-full border border-transparent px-2 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--stroke)] hover:text-[var(--navy-dark)]"
+              aria-label={`Duplicate ${card.title}`}
+            >
+              Copy
             </button>
             {otherColumns.length > 0 && (
               <button

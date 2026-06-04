@@ -18,6 +18,7 @@ type KanbanColumnProps = {
   onAddCard: (columnId: string, title: string, details: string) => void;
   onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null, labels: string[], checklist: ChecklistItem[]) => void;
   onArchiveCard: (columnId: string, cardId: string) => void;
+  onDuplicateCard: (columnId: string, cardId: string) => void;
   onMoveCardToColumn: (cardId: string, fromColumnId: string, toColumnId: string) => void;
   onDeleteColumn: (columnId: string) => void;
 };
@@ -31,6 +32,7 @@ export const KanbanColumn = ({
   onAddCard,
   onEditCard,
   onArchiveCard,
+  onDuplicateCard,
   onMoveCardToColumn,
   onDeleteColumn,
 }: KanbanColumnProps) => {
@@ -89,8 +91,11 @@ export const KanbanColumn = ({
               {...attributes}
               {...listeners}
             />
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
-              {cards.length} cards
+            <span
+              className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs font-semibold text-[var(--gray-text)]"
+              aria-label={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
+            >
+              {cards.length}
             </span>
           </div>
           <input
@@ -155,14 +160,18 @@ export const KanbanColumn = ({
               card={card}
               otherColumns={otherColumns}
               onArchive={(cardId) => onArchiveCard(column.id, cardId)}
+              onDuplicate={(cardId) => onDuplicateCard(column.id, cardId)}
               onMoveToColumn={(cardId, targetId) => onMoveCardToColumn(cardId, column.id, targetId)}
               onEdit={onEditCard}
             />
           ))}
         </SortableContext>
         {cards.length === 0 && !confirmDelete && (
-          <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[var(--stroke)] px-3 py-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
-            Drop a card here
+          <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-[var(--stroke)] px-4 py-8 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
+              No cards yet
+            </p>
+            <p className="text-xs text-[var(--gray-text)]">Add one using the form below.</p>
           </div>
         )}
         {cards.length > 0 && visibleCards.length === 0 && (

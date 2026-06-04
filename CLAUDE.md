@@ -77,13 +77,13 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 - `components/LoginForm.tsx` — toggles between sign-in and create-account modes
 - `components/BoardSelector.tsx` — lists boards, inline create-board form
 - `components/KanbanBoard.tsx` — owns board state; all mutations follow `prev → next → setBoard(next) → persist(prev, next)`; on failure rolls back to `prev`; AI updates skip `persist()` (backend already saved); holds filter state
-- `components/KanbanColumn.tsx` — column rendering, rename, delete with confirmation, applies card filter
-- `components/KanbanCard.tsx` — draggable card; view shows priority badge, due-date chip, label chips, checklist progress; edit has all fields including checklist items; state initialized on open (no useEffect sync)
+- `components/KanbanColumn.tsx` — column rendering, rename, delete with confirmation, applies card filter; card count badge in header; empty-state prompt when zero visible cards
+- `components/KanbanCard.tsx` — draggable card; view shows priority badge, due-date chip, label chips, checklist progress, duplicate button; edit has all fields including checklist items; state initialized on open (no useEffect sync)
 - `components/KanbanCardPreview.tsx` — read-only card in `DragOverlay` while dragging
 - `components/NewCardForm.tsx` — toggle-open add-card form used by `KanbanColumn`
 - `components/AddColumnForm.tsx` — toggle-open tile for adding a new column
 - `components/FilterBar.tsx` — search text, priority filter chips, overdue toggle
-- `components/AISidebar.tsx` — chat history, input, send; passes `boardId` to `chatWithBoard`
+- `components/AISidebar.tsx` — chat history, input, send, clear-chat button; passes `boardId` to `chatWithBoard`
 - `components/BoardStats.tsx` — shows total cards, overdue count, checklist completion in board header
 - `components/ArchivePanel.tsx` — collapsible panel listing archived cards; restore button per card
 - `components/ChangePasswordModal.tsx` — modal for changing password; requires current password + new password (min 6 chars)

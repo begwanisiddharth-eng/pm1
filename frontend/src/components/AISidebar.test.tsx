@@ -79,4 +79,14 @@ describe("AISidebar", () => {
       expect(onBoardUpdate).toHaveBeenCalledWith(initialData)
     );
   });
+
+  it("clears chat history when clear button is clicked", async () => {
+    vi.mocked(chatWithBoard).mockResolvedValue({ message: "Got it!", board: null });
+    renderSidebar();
+    await userEvent.type(screen.getByLabelText("Message"), "Hello");
+    await userEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await waitFor(() => expect(screen.getByText("Hello")).toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Clear chat" }));
+    expect(screen.queryByText("Hello")).not.toBeInTheDocument();
+  });
 });

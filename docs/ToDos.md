@@ -214,3 +214,13 @@ This file tracks the work required to complete the Project Management MVP. Mark 
 - [x] Frontend `KanbanCard.tsx`: overdue detection — red inset left shadow when past today.
 - [x] Frontend tests: 7 ChangePasswordModal tests; profile dropdown test in KanbanBoard (8 tests).
 - [x] ESLint clean (0 errors, 0 warnings); build succeeds; 66 backend tests, 39 frontend tests passing.
+
+## Part 15: Card Duplication, AI Clear Chat, and Column Empty State (Iteration 7)
+
+- [x] Frontend `KanbanBoard.tsx`: add `handleDuplicateCard(cardId, columnId)`.
+- [x] Frontend `KanbanCard.tsx`: add "Duplicate" button in view mode; `onDuplicate` prop.
+- [x] Frontend `KanbanColumn.tsx`: card count badge in header.
+- [x] Frontend `KanbanColumn.tsx`: empty-state prompt when zero visible cards.
+- [x] Frontend `AISidebar.tsx`: "Clear chat" button clears local messages state.
+- [x] Frontend tests: duplicate card test; clear chat test.
+- [x] ESLint clean; build succeeds; 66 backend tests, 41 frontend tests passing.

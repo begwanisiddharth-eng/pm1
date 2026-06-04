@@ -156,6 +156,17 @@ describe("KanbanBoard", () => {
     expect(screen.getByLabelText("Current password")).toBeInTheDocument();
   });
 
+  it("duplicates a card and saves", async () => {
+    renderBoard();
+    const column = getFirstColumn();
+    await userEvent.click(
+      within(column).getByRole("button", { name: "Duplicate Align roadmap themes" })
+    );
+    expect(within(column).getByText("Align roadmap themes")).toBeInTheDocument();
+    expect(within(column).getByText("Copy of Align roadmap themes")).toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(saveBoard)).toHaveBeenCalled());
+  });
+
   it("cancels card edit without saving", async () => {
     renderBoard();
     const column = getFirstColumn();

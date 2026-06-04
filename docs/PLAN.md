@@ -432,6 +432,39 @@ Three targeted UX and user management improvements:
 - Overdue cards are immediately obvious on the board.
 - All existing tests continue to pass.
 
+## Part 15: Card Duplication, AI Clear Chat, and Column Empty State (Iteration 7)
+
+### Goal
+
+Three targeted UX improvements:
+1. Cards can be duplicated with a single click; the clone appears directly below the original.
+2. The AI sidebar has a "Clear chat" button that resets the local conversation history.
+3. Column headers show a card count badge; zero-card columns show an empty-state prompt.
+
+### Checklist
+
+- [ ] Frontend `KanbanBoard.tsx`: add `handleDuplicateCard(cardId, columnId)` — creates a new card with a new ID, title "Copy of <original>", same metadata (priority, due_date, labels, checklist), inserts immediately after the original in the column's `cardIds`, then calls `persist`.
+- [ ] Frontend `KanbanCard.tsx`: add a "Duplicate" button in view mode; passes `onDuplicate` prop up.
+- [ ] Frontend `KanbanColumn.tsx`: show card count badge (visible cards count) in column header.
+- [ ] Frontend `KanbanColumn.tsx`: show empty-state prompt ("No cards yet. Add one below.") when column has zero visible cards.
+- [ ] Frontend `AISidebar.tsx`: add "Clear chat" button; clicking clears local `messages` state.
+- [ ] Frontend tests: duplicate card test in `KanbanBoard.test.tsx`; clear chat test; column empty state and badge tests.
+- [ ] ESLint clean; build succeeds; all prior tests still passing (66 backend, 39+ frontend).
+
+### Tests
+
+- Frontend: duplicating a card creates a new card titled "Copy of <title>" positioned after the original in the same column.
+- Frontend: clearing chat empties the message list in AISidebar.
+- Frontend: column with no visible cards shows empty state text.
+- Frontend: column with cards shows the correct card count badge.
+
+### Success Criteria
+
+- Card duplication works and persists to backend.
+- AI chat history can be cleared without affecting the board.
+- Empty columns have a clear visual prompt.
+- All existing tests continue to pass.
+
 ## Public API Summary
 
 Planned backend routes:

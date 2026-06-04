@@ -48,13 +48,25 @@ export const AISidebar = ({ boardId, onBoardUpdate }: Props) => {
       className="sticky top-6 flex h-96 w-80 flex-shrink-0 flex-col rounded-2xl border border-[var(--stroke)] bg-white/90 shadow-[var(--shadow)] backdrop-blur"
       data-testid="ai-sidebar"
     >
-      <div className="border-b border-[var(--stroke)] px-5 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
-          AI Assistant
-        </p>
-        <p className="mt-1 text-sm text-[var(--navy-dark)]">
-          Ask me to update your board
-        </p>
+      <div className="flex items-start justify-between gap-2 border-b border-[var(--stroke)] px-5 py-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
+            AI Assistant
+          </p>
+          <p className="mt-1 text-sm text-[var(--navy-dark)]">
+            Ask me to update your board
+          </p>
+        </div>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setMessages([])}
+            aria-label="Clear chat"
+            className="mt-0.5 rounded-lg border border-[var(--stroke)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)] transition hover:border-[var(--navy-dark)] hover:text-[var(--navy-dark)]"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">

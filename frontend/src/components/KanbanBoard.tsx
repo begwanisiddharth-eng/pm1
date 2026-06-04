@@ -233,6 +233,30 @@ export const KanbanBoard = ({
     void persist(prev, next);
   };
 
+  const handleDuplicateCard = (columnId: string, cardId: string) => {
+    const card = board.cards[cardId];
+    if (!card) return;
+    const col = board.columns.find((c) => c.id === columnId);
+    if (!col) return;
+    const newId = createId("card");
+    const insertAt = col.cardIds.indexOf(cardId) + 1;
+    const newCardIds = [...col.cardIds];
+    newCardIds.splice(insertAt, 0, newId);
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      cards: {
+        ...board.cards,
+        [newId]: { ...card, id: newId, title: `Copy of ${card.title}`, archived: false },
+      },
+      columns: board.columns.map((c) =>
+        c.id === columnId ? { ...c, cardIds: newCardIds } : c
+      ),
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
   const handleEditCard = (
     cardId: string,
     title: string,
@@ -491,6 +515,7 @@ export const KanbanBoard = ({
                         onAddCard={handleAddCard}
                         onEditCard={handleEditCard}
                         onArchiveCard={handleArchiveCard}
+                        onDuplicateCard={handleDuplicateCard}
                         onMoveCardToColumn={handleMoveCardToColumn}
                         onDeleteColumn={handleDeleteColumn}
                       />

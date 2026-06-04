@@ -20,6 +20,9 @@ This project is a local Project Management App. Implemented features:
 - Overdue cards are visually highlighted with a red left border and red due-date chip.
 - Keyboard shortcuts: Escape cancels editing, Enter saves in single-field inline forms.
 - Users can change their password from a profile dropdown in the board header.
+- Board columns show a card count badge; zero-card columns show a visual empty state prompt.
+- Cards can be duplicated (clone with a single click).
+- The AI sidebar history can be cleared via a "Clear chat" button.
 
 ## Technical Decisions
 
