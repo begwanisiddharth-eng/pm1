@@ -200,3 +200,17 @@ This file tracks the work required to complete the Project Management MVP. Mark 
 - [x] Frontend `ArchivePanel.tsx`: collapsible panel; Restore and Delete per archived card.
 - [x] Frontend tests: archive button test updated; 31 frontend tests passing.
 - [x] ESLint clean (0 errors, 0 warnings); build succeeds.
+
+## Part 14: Password Change, Keyboard Shortcuts, and Overdue Highlighting (Iteration 6)
+
+- [x] Backend: add `PATCH /api/auth/password` (current_password, new_password); validate current, enforce min-length 6 on new, update hash.
+- [x] Backend: add 4 tests for password change (success, wrong current, short new, unauthenticated).
+- [x] Frontend `lib/api.ts`: add `changePassword(currentPassword, newPassword)` fetch helper.
+- [x] Frontend `ChangePasswordModal.tsx`: modal with current/new/confirm fields; inline validation; success then close.
+- [x] Frontend `KanbanBoard.tsx`: profile dropdown (username initial avatar) in board header; "Change password" + "Sign out" options.
+- [x] Frontend `KanbanCard.tsx`: Escape in edit mode cancels; Enter in title field saves (was already in place).
+- [x] Frontend `NewCardForm.tsx`: Escape closes form; auto-focus on title input.
+- [x] Frontend `AddColumnForm.tsx`: Escape closes form; Enter submits (was already in place).
+- [x] Frontend `KanbanCard.tsx`: overdue detection — red inset left shadow when past today.
+- [x] Frontend tests: 7 ChangePasswordModal tests; profile dropdown test in KanbanBoard (8 tests).
+- [x] ESLint clean (0 errors, 0 warnings); build succeeds; 66 backend tests, 39 frontend tests passing.

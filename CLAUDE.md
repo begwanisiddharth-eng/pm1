@@ -63,7 +63,7 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 ### Backend Modules (`backend/app/`)
 
 - `main.py` — FastAPI entry point; mounts routers; serves `frontend/out/` at `/`; `GET /api/health`
-- `auth.py` — `/api/auth/login`, `/api/auth/logout`, `/api/auth/register`, `/api/auth/me`; `get_current_user` dependency; passwords hashed with PBKDF2-SHA256 (Python stdlib)
+- `auth.py` — `/api/auth/login`, `/api/auth/logout`, `/api/auth/register`, `/api/auth/me`, `PATCH /api/auth/password`; `get_current_user` dependency; passwords hashed with PBKDF2-SHA256 (Python stdlib)
 - `board.py` — multi-board CRUD routes (`GET/POST /api/boards`, `GET/PUT/PATCH/DELETE /api/boards/{id}`); `Card` and `BoardData` Pydantic models; `fetch_board_content` / `save_board_content` helpers used by `ai_router.py`
 - `database.py` — SQLite init, schema, migration, `hash_password`/`verify_password`, seed data, `get_db()` dependency
 - `ai.py` — OpenAI client, `gpt-4o-mini` model, Structured Outputs (`AIChatResponse`)
@@ -86,6 +86,7 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 - `components/AISidebar.tsx` — chat history, input, send; passes `boardId` to `chatWithBoard`
 - `components/BoardStats.tsx` — shows total cards, overdue count, checklist completion in board header
 - `components/ArchivePanel.tsx` — collapsible panel listing archived cards; restore button per card
+- `components/ChangePasswordModal.tsx` — modal for changing password; requires current password + new password (min 6 chars)
 
 ### Data Model
 

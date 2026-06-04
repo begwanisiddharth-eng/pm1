@@ -94,6 +94,19 @@ export async function deleteBoard(boardId: number): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete board");
 }
 
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const res = await fetch("/api/auth/password", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  if (res.status === 400) {
+    const data = await res.json();
+    throw new Error(data.detail ?? "Failed to change password");
+  }
+  if (!res.ok) throw new Error("Failed to change password");
+}
+
 export async function chatWithBoard(
   message: string,
   history: ChatMessage[],

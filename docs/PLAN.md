@@ -392,6 +392,46 @@ Three targeted PM improvements:
 - Cards can be moved between columns without drag-and-drop.
 - All existing tests continue to pass.
 
+## Part 14: Password Change, Keyboard Shortcuts, and Overdue Highlighting
+
+### Goal
+
+Three targeted UX and user management improvements:
+1. Users can change their password from a profile dropdown in the board header.
+2. Keyboard shortcuts: Escape cancels any edit/form, Enter saves in single-line inline forms.
+3. Overdue cards are visually highlighted with a red left border and red due-date chip.
+
+### Checklist
+
+- [ ] Backend: add `PATCH /api/auth/password` — accepts `current_password` and `new_password`; validates current, rejects if wrong; enforces min-length 6 on new; updates hash in DB.
+- [ ] Backend: add tests for password change (success, wrong current password, too-short new password, unauthenticated).
+- [ ] Frontend `lib/api.ts`: add `changePassword(currentPassword, newPassword)` fetch call.
+- [ ] Frontend `ChangePasswordModal.tsx`: modal with current-password field, new-password field, confirm-password field; inline validation; calls `changePassword`; shows success message then closes.
+- [ ] Frontend `KanbanBoard.tsx`: profile dropdown button in header (username initial); opens ChangePasswordModal on "Change password" click; "Sign out" also in dropdown.
+- [ ] Frontend `KanbanCard.tsx`: pressing Escape in edit mode cancels (same as clicking Cancel); pressing Enter in title field saves if title is not empty.
+- [ ] Frontend `NewCardForm.tsx`: pressing Escape closes the form; pressing Enter in title submits (if not empty).
+- [ ] Frontend `AddColumnForm.tsx`: pressing Escape closes the form; pressing Enter submits.
+- [ ] Frontend `KanbanCard.tsx`: add overdue detection — if `due_date` is set and before today, apply red left border and red color to the due-date chip.
+- [ ] Frontend tests: ChangePasswordModal renders and submits; keyboard shortcut tests for KanbanCard edit.
+- [ ] Backend tests: 66+ passing; frontend tests: 35+ passing; ESLint clean; build succeeds.
+
+### Tests
+
+- Backend: PATCH /api/auth/password with correct current password updates successfully.
+- Backend: PATCH /api/auth/password with wrong current password returns 400.
+- Backend: PATCH /api/auth/password with new password < 6 chars returns 422.
+- Backend: unauthenticated PATCH /api/auth/password returns 401.
+- Frontend: ChangePasswordModal shows validation error when passwords don't match.
+- Frontend: Escape key in card edit mode cancels the edit.
+- Frontend: overdue card shows red styling on due-date chip.
+
+### Success Criteria
+
+- Users can change their password without logging out.
+- Keyboard-only users can dismiss modals and submit forms efficiently.
+- Overdue cards are immediately obvious on the board.
+- All existing tests continue to pass.
+
 ## Public API Summary
 
 Planned backend routes:
@@ -400,6 +440,7 @@ Planned backend routes:
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `PATCH /api/auth/password`
 - `GET /api/board`
 - `PUT /api/board`
 - `POST /api/ai/chat`

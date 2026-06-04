@@ -1,10 +1,10 @@
+import json
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.database import get_db, hash_password, verify_password, _EMPTY_BOARD
-import json
 
 router = APIRouter(prefix="/api/auth")
 
@@ -17,6 +17,18 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str
     password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+def get_current_user(request: Request) -> str:
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
 
 
 @router.post("/login")
@@ -78,8 +90,24 @@ def me(request: Request) -> dict[str, str]:
     return {"username": user}
 
 
-def get_current_user(request: Request) -> str:
-    user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return user
+@router.patch("/password")
+def change_password(
+    body: ChangePasswordRequest,
+    username: str = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db),
+) -> dict[str, bool]:
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    row = db.execute(
+        "SELECT password_hash FROM users WHERE username = ?",
+        [username],
+    ).fetchone()
+    if not row or not verify_password(body.current_password, row["password_hash"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    new_hash = hash_password(body.new_password)
+    db.execute(
+        "UPDATE users SET password_hash = ? WHERE username = ?",
+        [new_hash, username],
+    )
+    db.commit()
+    return {"ok": True}

@@ -123,15 +123,21 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onMoveToColumn, onEd
   const dueDateInfo = card.due_date ? formatDueDate(card.due_date) : null;
   const checklist = card.checklist ?? [];
   const checklistDone = checklist.filter((i) => i.done).length;
+  const shadowClass = isDragging
+    ? "shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
+    : dueDateInfo?.overdue
+      ? "shadow-[0_12px_24px_rgba(3,33,71,0.08),inset_3px_0_0_#f87171]"
+      : "shadow-[0_12px_24px_rgba(3,33,71,0.08)]";
 
   return (
     <article
       ref={setNodeRef}
       style={style}
       className={clsx(
-        "rounded-2xl border border-transparent bg-white px-4 py-4 shadow-[0_12px_24px_rgba(3,33,71,0.08)]",
+        "rounded-2xl border border-transparent bg-white px-4 py-4",
         "transition-all duration-150",
-        isDragging && "opacity-60 shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
+        shadowClass,
+        isDragging && "opacity-60"
       )}
       {...attributes}
       {...(isEditing ? {} : listeners)}

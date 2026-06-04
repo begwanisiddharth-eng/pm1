@@ -17,6 +17,9 @@ This project is a local Project Management App. Implemented features:
   The AI preserves card metadata (priority, due_date, labels, checklist) when updating the board.
 - Cards can be archived (soft-deleted); an archive panel lets users view and restore archived cards.
 - Users can set a board description; it appears beneath the board title.
+- Overdue cards are visually highlighted with a red left border and red due-date chip.
+- Keyboard shortcuts: Escape cancels editing, Enter saves in single-field inline forms.
+- Users can change their password from a profile dropdown in the board header.
 
 ## Technical Decisions
 

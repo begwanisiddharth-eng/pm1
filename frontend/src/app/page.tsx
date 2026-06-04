@@ -134,6 +134,7 @@ export default function Page() {
       initialBoard={board}
       boardId={activeBoard.id}
       boardName={activeBoard.name}
+      username={username}
       onLogout={handleLogout}
       onSwitchBoards={handleSwitchBoards}
       onBoardRenamed={handleBoardRenamed}

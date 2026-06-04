@@ -11,6 +11,7 @@ vi.mock("@/lib/api", () => ({
   deleteBoard: vi.fn().mockResolvedValue(undefined),
   chatWithBoard: vi.fn(),
   createBoard: vi.fn(),
+  changePassword: vi.fn().mockResolvedValue(undefined),
 }));
 
 const BOARD_ID = 1;
@@ -21,6 +22,7 @@ const renderBoard = () =>
       initialBoard={initialData}
       boardId={BOARD_ID}
       boardName="Test Board"
+      username="testuser"
       onLogout={vi.fn()}
       onSwitchBoards={vi.fn()}
       onBoardRenamed={vi.fn()}
@@ -143,6 +145,15 @@ describe("KanbanBoard", () => {
       expect(within(column).getByText(originalTitle)).toBeInTheDocument()
     );
     expect(within(column).queryByText("Will be rolled back")).not.toBeInTheDocument();
+  });
+
+  it("shows profile menu on avatar click and opens change password modal", async () => {
+    renderBoard();
+    await userEvent.click(screen.getByRole("button", { name: "Profile menu" }));
+    expect(screen.getByText("Change password")).toBeInTheDocument();
+    expect(screen.getByText("Sign out")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Change password"));
+    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
   });
 
   it("cancels card edit without saving", async () => {

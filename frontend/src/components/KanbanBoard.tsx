@@ -19,6 +19,7 @@ import { AddColumnForm } from "@/components/AddColumnForm";
 import { FilterBar } from "@/components/FilterBar";
 import { BoardStats } from "@/components/BoardStats";
 import { ArchivePanel } from "@/components/ArchivePanel";
+import { ChangePasswordModal } from "@/components/ChangePasswordModal";
 import { createId, moveCard, moveColumn, type BoardData, type ChecklistItem, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/api";
@@ -27,6 +28,7 @@ type KanbanBoardProps = {
   initialBoard: BoardData;
   boardId: number;
   boardName: string;
+  username: string;
   onLogout: () => void;
   onSwitchBoards: () => void;
   onBoardRenamed: (updated: BoardSummary) => void;
@@ -37,6 +39,7 @@ export const KanbanBoard = ({
   initialBoard,
   boardId,
   boardName,
+  username,
   onLogout,
   onSwitchBoards,
   onBoardRenamed,
@@ -52,6 +55,8 @@ export const KanbanBoard = ({
   const [filter, setFilter] = useState<CardFilter>({ search: "", priority: null, overdueOnly: false });
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState(initialBoard.description ?? "");
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -414,13 +419,34 @@ export const KanbanBoard = ({
                   Delete board
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onLogout}
-                className="rounded-xl border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--navy-dark)] hover:text-[var(--navy-dark)]"
-              >
-                Sign out
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileMenu((v) => !v)}
+                  aria-label="Profile menu"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--navy-dark)] font-display text-sm font-semibold text-white transition hover:opacity-80"
+                >
+                  {username[0]?.toUpperCase() ?? "?"}
+                </button>
+                {showProfileMenu && (
+                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] overflow-hidden rounded-xl border border-[var(--stroke)] bg-white shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => { setShowProfileMenu(false); setShowChangePassword(true); }}
+                      className="block w-full px-4 py-2.5 text-left text-sm text-[var(--navy-dark)] hover:bg-[var(--surface)]"
+                    >
+                      Change password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowProfileMenu(false); onLogout(); }}
+                      className="block w-full px-4 py-2.5 text-left text-sm text-[var(--navy-dark)] hover:bg-[var(--surface)]"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -496,6 +522,10 @@ export const KanbanBoard = ({
           />
         )}
       </main>
+
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </div>
   );
 };
