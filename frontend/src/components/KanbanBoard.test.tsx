@@ -10,6 +10,7 @@ vi.mock("@/lib/api", () => ({
   renameBoard: vi.fn().mockResolvedValue({ id: 1, name: "Test Board", updated_at: "" }),
   deleteBoard: vi.fn().mockResolvedValue(undefined),
   chatWithBoard: vi.fn(),
+  createBoard: vi.fn(),
 }));
 
 const BOARD_ID = 1;
@@ -114,6 +115,8 @@ describe("KanbanBoard", () => {
             "card-1": expect.objectContaining({
               title: "Updated title",
               details: "Updated details",
+              priority: null,
+              due_date: null,
             }),
           }),
         })

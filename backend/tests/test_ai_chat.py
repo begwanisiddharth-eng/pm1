@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.ai import AIChatBoard, AIChatColumn, AIChatResponse
+from app.ai import AIChatBoard, AIChatCard, AIChatColumn, AIChatResponse
 
 
 def test_ai_chat_unauthenticated(client: TestClient) -> None:
@@ -126,3 +126,42 @@ def test_ai_chat_board_not_found(auth_client: TestClient) -> None:
             json={"message": "hello", "board_id": 99999},
         )
     assert response.status_code == 404
+
+
+def test_ai_chat_preserves_card_metadata(
+    auth_client: TestClient, test_db, default_board_id: int
+) -> None:
+    # Set up a board with a card that has priority and due_date
+    board_with_metadata = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Original title",
+                "details": "Details",
+                "priority": "high",
+                "due_date": "2026-12-31",
+            }
+        },
+    }
+    auth_client.put(f"/api/boards/{default_board_id}", json=board_with_metadata)
+
+    # AI returns the card with a new title but no metadata fields
+    new_board = AIChatBoard(
+        columns=[AIChatColumn(id="col-1", title="Work", cardIds=["c1"])],
+        cards=[AIChatCard(id="c1", title="AI updated title", details="Details")],
+    )
+    mock_response = AIChatResponse(message="Updated!", board=new_board)
+    with patch("app.ai_router.ai_chat", return_value=mock_response):
+        response = auth_client.post(
+            "/api/ai/chat",
+            json={"message": "Rename the card.", "board_id": default_board_id},
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["board"] is not None
+    # Card title should be updated, metadata should be preserved
+    card = data["board"]["cards"]["c1"]
+    assert card["title"] == "AI updated title"
+    assert card["priority"] == "high"
+    assert card["due_date"] == "2026-12-31"

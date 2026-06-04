@@ -14,7 +14,8 @@ import {
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { AISidebar } from "@/components/AISidebar";
-import { createId, moveCard, type BoardData } from "@/lib/kanban";
+import { AddColumnForm } from "@/components/AddColumnForm";
+import { createId, moveCard, type BoardData, type Priority } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/api";
 
@@ -92,6 +93,33 @@ export const KanbanBoard = ({
     void persist(prev, next);
   };
 
+  const handleAddColumn = (title: string) => {
+    const id = createId("col");
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      columns: [...board.columns, { id, title, cardIds: [] }],
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
+  const handleDeleteColumn = (columnId: string) => {
+    const col = board.columns.find((c) => c.id === columnId);
+    if (!col) return;
+    const removedCardIds = new Set(col.cardIds);
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      columns: board.columns.filter((c) => c.id !== columnId),
+      cards: Object.fromEntries(
+        Object.entries(board.cards).filter(([id]) => !removedCardIds.has(id))
+      ),
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
   const handleAddCard = (columnId: string, title: string, details: string) => {
     const id = createId("card");
     const prev = board;
@@ -128,13 +156,25 @@ export const KanbanBoard = ({
     void persist(prev, next);
   };
 
-  const handleEditCard = (cardId: string, title: string, details: string) => {
+  const handleEditCard = (
+    cardId: string,
+    title: string,
+    details: string,
+    priority: Priority | null,
+    dueDate: string | null,
+  ) => {
     const prev = board;
     const next: BoardData = {
       ...board,
       cards: {
         ...board.cards,
-        [cardId]: { ...board.cards[cardId], title, details },
+        [cardId]: {
+          ...board.cards[cardId],
+          title,
+          details,
+          priority,
+          due_date: dueDate,
+        },
       },
     };
     setBoard(next);
@@ -290,28 +330,31 @@ export const KanbanBoard = ({
         </header>
 
         <div className="flex items-start gap-6">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1 overflow-x-auto">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCorners}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <section className="grid gap-4 grid-cols-5">
+              <section className="flex items-start gap-4 pb-2">
                 {board.columns.map((column) => (
-                  <KanbanColumn
-                    key={column.id}
-                    column={column}
-                    cards={column.cardIds.flatMap((cardId) => {
-                      const card = board.cards[cardId];
-                      return card ? [card] : [];
-                    })}
-                    onRename={handleRenameColumn}
-                    onAddCard={handleAddCard}
-                    onDeleteCard={handleDeleteCard}
-                    onEditCard={handleEditCard}
-                  />
+                  <div key={column.id} className="min-w-[220px] flex-1">
+                    <KanbanColumn
+                      column={column}
+                      cards={column.cardIds.flatMap((cardId) => {
+                        const card = board.cards[cardId];
+                        return card ? [card] : [];
+                      })}
+                      onRename={handleRenameColumn}
+                      onAddCard={handleAddCard}
+                      onDeleteCard={handleDeleteCard}
+                      onEditCard={handleEditCard}
+                      onDeleteColumn={handleDeleteColumn}
+                    />
+                  </div>
                 ))}
+                <AddColumnForm onAdd={handleAddColumn} />
               </section>
               <DragOverlay>
                 {activeCard ? (

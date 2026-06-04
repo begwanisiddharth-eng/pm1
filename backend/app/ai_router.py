@@ -2,7 +2,7 @@ import logging
 import sqlite3
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ValidationError
 
 from app.ai import AIChatResponse
@@ -68,9 +68,23 @@ def ai_chat_endpoint(
             card_ids = [c.id for c in ai_response.board.cards]
             if len(card_ids) != len(set(card_ids)):
                 raise ValueError("AI response contains duplicate card IDs")
+
+            # Preserve card metadata (priority, due_date) from existing board
+            existing_board = BoardData.model_validate_json(board_json)
+            existing_cards = existing_board.cards
+
+            cards_dict: dict[str, dict] = {}
+            for ai_card in ai_response.board.cards:
+                card_dict = ai_card.model_dump()
+                existing = existing_cards.get(ai_card.id)
+                if existing:
+                    card_dict["priority"] = existing.priority
+                    card_dict["due_date"] = existing.due_date
+                cards_dict[ai_card.id] = card_dict
+
             board_dict = {
                 "columns": [c.model_dump() for c in ai_response.board.columns],
-                "cards": {c.id: c.model_dump() for c in ai_response.board.cards},
+                "cards": cards_dict,
             }
             validated = BoardData.model_validate(board_dict)
             if save_board_content(db, body.board_id, validated.model_dump_json()):

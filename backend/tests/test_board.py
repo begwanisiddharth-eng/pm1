@@ -226,3 +226,59 @@ def test_other_user_cannot_access_board(
     )
     response = client.get(f"/api/boards/{default_board_id}")
     assert response.status_code == 404
+
+
+# --- Card priority and due_date tests ---
+
+def test_put_board_with_card_priority_and_due_date(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Task",
+                "details": "Do it",
+                "priority": "high",
+                "due_date": "2026-12-31",
+            }
+        },
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert card["priority"] == "high"
+    assert card["due_date"] == "2026-12-31"
+
+
+def test_put_board_card_priority_invalid_value_rejected(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Task",
+                "details": "Do it",
+                "priority": "urgent",  # not a valid literal
+            }
+        },
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 422
+
+
+def test_put_board_card_optional_fields_default_to_none(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "Task", "details": "Do it"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert card["priority"] is None
+    assert card["due_date"] is None

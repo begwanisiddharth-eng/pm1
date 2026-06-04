@@ -2,18 +2,52 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
-import type { Card } from "@/lib/kanban";
+import type { Card, Priority } from "@/lib/kanban";
 
 type KanbanCardProps = {
   card: Card;
   onDelete: (cardId: string) => void;
-  onEdit: (cardId: string, title: string, details: string) => void;
+  onEdit: (
+    cardId: string,
+    title: string,
+    details: string,
+    priority: Priority | null,
+    dueDate: string | null,
+  ) => void;
+};
+
+const PRIORITY_OPTIONS: { value: Priority; label: string; color: string }[] = [
+  { value: "low",      label: "Low",      color: "bg-green-100 text-green-700 border-green-300" },
+  { value: "medium",   label: "Medium",   color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+  { value: "high",     label: "High",     color: "bg-orange-100 text-orange-700 border-orange-300" },
+  { value: "critical", label: "Critical", color: "bg-red-100 text-red-700 border-red-300" },
+];
+
+const priorityStyle = (p: Priority): string => {
+  switch (p) {
+    case "low":      return "bg-green-100 text-green-700";
+    case "medium":   return "bg-yellow-100 text-yellow-700";
+    case "high":     return "bg-orange-100 text-orange-700";
+    case "critical": return "bg-red-100 text-red-700";
+  }
+};
+
+const formatDueDate = (dateStr: string): { text: string; overdue: boolean; soon: boolean } => {
+  const due = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  const text = due.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return { text, overdue: diffDays < 0, soon: diffDays >= 0 && diffDays <= 2 };
 };
 
 export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
+  const [editPriority, setEditPriority] = useState<Priority | null>(null);
+  const [editDueDate, setEditDueDate] = useState("");
   const [titleError, setTitleError] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -27,6 +61,8 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const openEdit = () => {
     setEditTitle(card.title);
     setEditDetails(card.details);
+    setEditPriority(card.priority ?? null);
+    setEditDueDate(card.due_date ?? "");
     setTitleError(false);
     setIsEditing(true);
   };
@@ -37,7 +73,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
       setTitleError(true);
       return;
     }
-    onEdit(card.id, trimmed, editDetails);
+    onEdit(card.id, trimmed, editDetails, editPriority, editDueDate || null);
     setTitleError(false);
     setIsEditing(false);
   };
@@ -46,6 +82,8 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
     setTitleError(false);
     setIsEditing(false);
   };
+
+  const dueDateInfo = card.due_date ? formatDueDate(card.due_date) : null;
 
   return (
     <article
@@ -86,6 +124,58 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
             rows={3}
             aria-label="Card details"
           />
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
+              Priority
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEditPriority(null)}
+                className={clsx(
+                  "rounded-full border px-2.5 py-0.5 text-xs font-semibold transition",
+                  editPriority === null
+                    ? "border-[var(--navy-dark)] bg-[var(--navy-dark)] text-white"
+                    : "border-[var(--stroke)] text-[var(--gray-text)] hover:border-[var(--navy-dark)]"
+                )}
+              >
+                None
+              </button>
+              {PRIORITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setEditPriority(opt.value)}
+                  className={clsx(
+                    "rounded-full border px-2.5 py-0.5 text-xs font-semibold transition",
+                    editPriority === opt.value
+                      ? opt.color + " border-current"
+                      : "border-[var(--stroke)] text-[var(--gray-text)] hover:border-current"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor={`due-${card.id}`}
+              className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]"
+            >
+              Due date
+            </label>
+            <input
+              id={`due-${card.id}`}
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate(e.target.value)}
+              className="rounded-lg border border-[var(--stroke)] bg-[var(--surface)] px-2.5 py-1.5 text-xs text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]"
+            />
+          </div>
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -105,13 +195,42 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
         </div>
       ) : (
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h4 className="font-display text-base font-semibold text-[var(--navy-dark)]">
               {card.title}
             </h4>
             <p className="mt-2 text-sm leading-6 text-[var(--gray-text)]">
               {card.details}
             </p>
+            {(card.priority || dueDateInfo) && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                {card.priority && (
+                  <span
+                    className={clsx(
+                      "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                      priorityStyle(card.priority)
+                    )}
+                  >
+                    {card.priority}
+                  </span>
+                )}
+                {dueDateInfo && (
+                  <span
+                    className={clsx(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      dueDateInfo.overdue
+                        ? "bg-red-100 text-red-700"
+                        : dueDateInfo.soon
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-[var(--surface)] text-[var(--gray-text)]"
+                    )}
+                  >
+                    {dueDateInfo.overdue && "Overdue · "}
+                    {dueDateInfo.text}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <button

@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, model_validator
@@ -14,6 +15,8 @@ class Card(BaseModel):
     id: str
     title: str
     details: str
+    priority: Literal["low", "medium", "high", "critical"] | None = None
+    due_date: str | None = None
 
 
 class Column(BaseModel):
