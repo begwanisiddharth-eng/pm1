@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { chatWithBoard, type ChatMessage } from "@/lib/api";
 import type { BoardData } from "@/lib/kanban";
 
+type LocalMessage = ChatMessage & { id: string };
+
 type Props = {
   boardId: number;
   onBoardUpdate: (board: BoardData) => void;
 };
 
 export const AISidebar = ({ boardId, onBoardUpdate }: Props) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export const AISidebar = ({ boardId, onBoardUpdate }: Props) => {
   const handleSend = async () => {
     const text = input.trim();
     if (!text || loading) return;
-    const userMessage: ChatMessage = { role: "user", content: text };
+    const userMessage: LocalMessage = { id: `msg-${Date.now()}-u`, role: "user", content: text };
     const nextHistory = [...messages, userMessage];
     setMessages(nextHistory);
     setInput("");
@@ -32,7 +34,8 @@ export const AISidebar = ({ boardId, onBoardUpdate }: Props) => {
     setError(null);
     try {
       const result = await chatWithBoard(text, messages, boardId);
-      setMessages([...nextHistory, { role: "assistant", content: result.message }]);
+      const assistantMessage: LocalMessage = { id: `msg-${Date.now()}-a`, role: "assistant", content: result.message };
+      setMessages([...nextHistory, assistantMessage]);
       if (result.board) {
         onBoardUpdate(result.board);
       }
@@ -75,9 +78,9 @@ export const AISidebar = ({ boardId, onBoardUpdate }: Props) => {
             Ask me to reorganize cards, rename columns, or suggest improvements.
           </p>
         )}
-        {messages.map((msg, i) => (
+        {messages.map((msg) => (
           <div
-            key={i}
+            key={msg.id}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { AISidebar } from "@/components/AISidebar";
 import { chatWithBoard } from "@/lib/api";
-import { initialData } from "@/lib/kanban";
+import { seedBoard } from "@/test/fixtures";
 
 vi.mock("@/lib/api", () => ({
   saveBoard: vi.fn(),
@@ -70,13 +70,13 @@ describe("AISidebar", () => {
   it("calls onBoardUpdate when AI returns a board", async () => {
     vi.mocked(chatWithBoard).mockResolvedValue({
       message: "Updated the board.",
-      board: initialData,
+      board: seedBoard,
     });
     renderSidebar();
     await userEvent.type(screen.getByLabelText("Message"), "Update the board");
     await userEvent.click(screen.getByRole("button", { name: "Send message" }));
     await waitFor(() =>
-      expect(onBoardUpdate).toHaveBeenCalledWith(initialData)
+      expect(onBoardUpdate).toHaveBeenCalledWith(seedBoard)
     );
   });
 

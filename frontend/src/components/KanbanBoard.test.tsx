@@ -2,7 +2,7 @@ import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { initialData } from "@/lib/kanban";
+import { seedBoard } from "@/test/fixtures";
 import { saveBoard } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({
@@ -19,7 +19,7 @@ const BOARD_ID = 1;
 const renderBoard = () =>
   render(
     <KanbanBoard
-      initialBoard={initialData}
+      initialBoard={seedBoard}
       boardId={BOARD_ID}
       boardName="Test Board"
       username="testuser"

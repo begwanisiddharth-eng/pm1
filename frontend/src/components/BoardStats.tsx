@@ -5,7 +5,8 @@ type BoardStatsProps = {
 };
 
 export const BoardStats = ({ board }: BoardStatsProps) => {
-  const cards = Object.values(board.cards);
+  const archivedIds = new Set(board.archivedCardIds ?? []);
+  const cards = Object.values(board.cards).filter((c) => !archivedIds.has(c.id));
   const total = cards.length;
 
   const today = new Date();

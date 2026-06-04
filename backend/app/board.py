@@ -1,9 +1,11 @@
 import json
+import re
 import sqlite3
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from app.auth import get_current_user
 from app.database import get_db, _EMPTY_BOARD
@@ -34,6 +36,20 @@ class Card(BaseModel):
     comments: list[Comment] = []
     color: str | None = None
     archived: bool = False
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, v: str | None) -> str | None:
+        if v is not None and not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+            raise ValueError("color must be a 6-digit hex string or null")
+        return v
+
+    @field_validator("due_date")
+    @classmethod
+    def validate_due_date(cls, v: str | None) -> str | None:
+        if v is not None:
+            date.fromisoformat(v)
+        return v
 
 
 class Column(BaseModel):
@@ -195,7 +211,7 @@ def rename_board(
     if not name:
         raise HTTPException(status_code=400, detail="Board name cannot be empty")
     db.execute(
-        "UPDATE boards SET name = ? WHERE id = ?",
+        "UPDATE boards SET name = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?",
         [name, board_id],
     )
     db.commit()

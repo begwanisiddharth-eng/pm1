@@ -208,8 +208,14 @@ export const KanbanBoard = ({
   const handleRestoreCard = (cardId: string) => {
     const card = board.cards[cardId];
     if (!card) return;
-    const firstColumnId = board.columns[0]?.id;
-    if (!firstColumnId) return;
+    const firstColumn = board.columns[0];
+    if (!firstColumn) return;
+    const wipLimit = firstColumn.wipLimit ?? null;
+    if (wipLimit !== null && firstColumn.cardIds.length >= wipLimit) {
+      setSaveError(`Cannot restore: "${firstColumn.title}" is at its WIP limit.`);
+      return;
+    }
+    const firstColumnId = firstColumn.id;
     const prev = board;
     const next: BoardData = {
       ...board,
@@ -347,14 +353,45 @@ export const KanbanBoard = ({
     reader.onload = (ev) => {
       try {
         const parsed = JSON.parse(ev.target?.result as string) as unknown;
+        const obj = parsed as Record<string, unknown>;
         if (
           !parsed ||
           typeof parsed !== "object" ||
-          !Array.isArray((parsed as Record<string, unknown>).columns) ||
-          typeof (parsed as Record<string, unknown>).cards !== "object"
+          !Array.isArray(obj.columns) ||
+          typeof obj.cards !== "object" ||
+          obj.cards === null
         ) {
           setSaveError("Import failed: file does not contain a valid board.");
           return;
+        }
+        const cols = obj.columns as Record<string, unknown>[];
+        for (const col of cols) {
+          if (typeof col.id !== "string" || typeof col.title !== "string" || !Array.isArray(col.cardIds)) {
+            setSaveError("Import failed: one or more columns are missing required fields (id, title, cardIds).");
+            return;
+          }
+          if (col.wipLimit !== undefined && col.wipLimit !== null && (typeof col.wipLimit !== "number" || col.wipLimit < 1)) {
+            setSaveError("Import failed: wipLimit must be a positive number or null.");
+            return;
+          }
+        }
+        const cards = obj.cards as Record<string, unknown>;
+        for (const card of Object.values(cards)) {
+          const c = card as Record<string, unknown>;
+          if (typeof c.id !== "string" || typeof c.title !== "string") {
+            setSaveError("Import failed: one or more cards are missing required fields (id, title).");
+            return;
+          }
+        }
+        const allCardIds = cols.flatMap((col) => col.cardIds as string[]);
+        const archivedIds = new Set<string>(Array.isArray(obj.archivedCardIds) ? (obj.archivedCardIds as string[]) : []);
+        const activeIds = new Set(Object.keys(cards).filter((id) => !archivedIds.has(id)));
+        const referencedIds = new Set(allCardIds);
+        for (const id of referencedIds) {
+          if (!activeIds.has(id)) {
+            setSaveError(`Import failed: column references card "${id}" which does not exist.`);
+            return;
+          }
         }
         setConfirmImport(parsed as BoardData);
       } catch {
@@ -379,8 +416,10 @@ export const KanbanBoard = ({
     const a = document.createElement("a");
     a.href = url;
     a.download = `${currentBoardName.replace(/\s+/g, "-").toLowerCase()}-board.json`;
+    a.addEventListener("click", () => {
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    });
     a.click();
-    URL.revokeObjectURL(url);
   };
 
   const handleSaveDescription = () => {

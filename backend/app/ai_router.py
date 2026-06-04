@@ -4,7 +4,7 @@ import sqlite3
 from typing import Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from app.ai import AIChatResponse
 from app.ai import chat as ai_chat
@@ -35,7 +35,7 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    history: list[Message] = []
+    history: list[Message] = Field(default=[], max_length=200)
     board_id: int
 
 

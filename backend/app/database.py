@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import os
 import sqlite3
@@ -46,7 +47,7 @@ def verify_password(password: str, stored_hash: str) -> bool:
     try:
         _, alg, iterations, salt, key_hex = stored_hash.split(":")
         key = hashlib.pbkdf2_hmac(alg, password.encode(), salt.encode(), int(iterations))
-        return key.hex() == key_hex
+        return hmac.compare_digest(key.hex(), key_hex)
     except Exception:
         return False
 

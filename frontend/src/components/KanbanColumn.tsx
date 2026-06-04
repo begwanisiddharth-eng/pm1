@@ -52,6 +52,7 @@ export const KanbanColumn = ({
     isOver,
   } = useSortable({ id: column.id });
   const [titleValue, setTitleValue] = useState(column.title);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editingWipLimit, setEditingWipLimit] = useState(false);
   const [wipDraft, setWipDraft] = useState<string>(column.wipLimit != null ? String(column.wipLimit) : "");
@@ -77,9 +78,10 @@ export const KanbanColumn = ({
     : "rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs font-semibold text-[var(--gray-text)]";
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTitleValue(column.title);
-  }, [column.title]);
+    if (!isEditingTitle) {
+      setTitleValue(column.title);
+    }
+  }, [column.title, isEditingTitle]);
 
   const handleBlur = () => {
     const trimmed = titleValue.trim();
@@ -192,7 +194,8 @@ export const KanbanColumn = ({
           <input
             value={titleValue}
             onChange={(e) => setTitleValue(e.target.value)}
-            onBlur={handleBlur}
+            onFocus={() => setIsEditingTitle(true)}
+            onBlur={() => { setIsEditingTitle(false); handleBlur(); }}
             onKeyDown={(e) => {
               if (e.key === "Enter") e.currentTarget.blur();
             }}

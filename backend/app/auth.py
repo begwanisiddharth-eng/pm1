@@ -66,7 +66,6 @@ def register(
         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
         [body.username.strip(), password_hash],
     )
-    db.commit()
     user_id = cursor.lastrowid
     db.execute(
         "INSERT INTO boards (user_id, name, content) VALUES (?, ?, ?)",
