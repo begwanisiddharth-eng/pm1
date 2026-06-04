@@ -465,6 +465,43 @@ Three targeted UX improvements:
 - Empty columns have a clear visual prompt.
 - All existing tests continue to pass.
 
+## Part 16: Card Comments, Card Color Accents, and Board Export (Iteration 8)
+
+### Goal
+
+Three targeted PM improvements:
+1. Cards can have timestamped text comments stored in the card JSON; visible in view mode and editable in the edit panel.
+2. Cards can be assigned an accent color (one of several presets) for visual grouping; the color shows as a top border strip on the card.
+3. The board can be exported to a JSON file via a button in the board header.
+
+### Checklist
+
+- [ ] Backend: add `color?: str | None = None` to `Card` model.
+- [ ] Backend: add `comments?: list[Comment] = []` to `Card` model; `Comment` Pydantic model (`id: str`, `text: str`, `created_at: str`).
+- [ ] Backend: preserve `color` and `comments` in AI board merges.
+- [ ] Backend: add round-trip tests for color and comments (2 tests).
+- [ ] Frontend `kanban.ts`: add `color?: string | null` and `comments?: Comment[]` to `Card`; add `Comment` type.
+- [ ] Frontend `KanbanCard.tsx`: show accent color strip (top border or top colored band) in view mode; add color picker in edit mode (6 preset swatches + "None").
+- [ ] Frontend `KanbanCard.tsx`: show comment count chip in view mode ("2 comments"); show comment list in edit mode (add comment textarea + submit button; each comment shows text and timestamp).
+- [ ] Frontend `KanbanBoard.tsx`: add "Export JSON" button in board header; clicking triggers a browser download of the current board JSON.
+- [ ] Frontend tests: color picker test; add comment test; export JSON test (verify download triggered).
+- [ ] ESLint clean; build succeeds; all prior tests still passing (66 backend, 41+ frontend).
+
+### Tests
+
+- Backend: PUT board with `color` and `comments` round-trips correctly.
+- Backend: AI merge preserves existing color and comments.
+- Frontend: selecting an accent color saves and shows on the card.
+- Frontend: adding a comment shows it in edit mode with timestamp.
+- Frontend: Export JSON button triggers a file download.
+
+### Success Criteria
+
+- Cards can be color-coded; color persists to backend.
+- Cards can have comments; comments persist to backend.
+- Board can be exported as a downloadable JSON file.
+- All existing tests continue to pass.
+
 ## Public API Summary
 
 Planned backend routes:

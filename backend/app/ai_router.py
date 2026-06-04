@@ -95,6 +95,8 @@ def ai_chat_endpoint(
                     card_dict["due_date"] = existing.due_date
                     card_dict["labels"] = existing.labels
                     card_dict["checklist"] = [item.model_dump() for item in existing.checklist]
+                    card_dict["comments"] = [c.model_dump() for c in existing.comments]
+                    card_dict["color"] = existing.color
                 cards_dict[ai_card.id] = card_dict
 
             # Carry archived cards back into the merged board

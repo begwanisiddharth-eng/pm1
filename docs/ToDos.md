@@ -224,3 +224,16 @@ This file tracks the work required to complete the Project Management MVP. Mark 
 - [x] Frontend `AISidebar.tsx`: "Clear chat" button clears local messages state.
 - [x] Frontend tests: duplicate card test; clear chat test.
 - [x] ESLint clean; build succeeds; 66 backend tests, 41 frontend tests passing.
+
+## Part 16: Card Comments, Card Color Accents, and Board Export (Iteration 8)
+
+- [x] Backend: add `color?: str | None` and `comments: list[Comment] = []` to `Card` model.
+- [x] Backend: `Comment` Pydantic model (`id`, `text`, `created_at`).
+- [x] Backend: preserve `color` and `comments` in AI board merges.
+- [x] Backend: round-trip tests for color and comments (4 new tests, 70 total).
+- [x] Frontend `kanban.ts`: add `color?` and `comments?` to `Card`; add `Comment` type; add `CARD_COLORS`.
+- [x] Frontend `KanbanCard.tsx`: accent color top border in view mode; color picker (6 swatches + None) in edit mode.
+- [x] Frontend `KanbanCard.tsx`: comment count chip in view; comment list + add form in edit mode.
+- [x] Frontend `KanbanBoard.tsx`: "Export JSON" button downloads board as JSON file.
+- [x] Frontend tests: color picker test; add comment test (2 new tests, 43 total).
+- [x] ESLint clean; build succeeds; 70 backend tests, 43 frontend tests passing.

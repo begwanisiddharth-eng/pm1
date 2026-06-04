@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
-import type { Card, ChecklistItem, Priority } from "@/lib/kanban";
-import { LABEL_OPTIONS, createId } from "@/lib/kanban";
+import type { Card, ChecklistItem, Comment, Priority } from "@/lib/kanban";
+import { CARD_COLORS, LABEL_OPTIONS, createId } from "@/lib/kanban";
 
 type ColumnOption = { id: string; title: string };
 
@@ -21,6 +21,8 @@ type KanbanCardProps = {
     dueDate: string | null,
     labels: string[],
     checklist: ChecklistItem[],
+    comments: Comment[],
+    color: string | null,
   ) => void;
 };
 
@@ -58,6 +60,9 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
   const [editDueDate, setEditDueDate] = useState("");
   const [editLabels, setEditLabels] = useState<string[]>([]);
   const [editChecklist, setEditChecklist] = useState<ChecklistItem[]>([]);
+  const [editComments, setEditComments] = useState<Comment[]>([]);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [editColor, setEditColor] = useState<string | null>(null);
   const [newChecklistText, setNewChecklistText] = useState("");
   const [titleError, setTitleError] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -77,7 +82,10 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
     setEditDueDate(card.due_date ?? "");
     setEditLabels(card.labels ?? []);
     setEditChecklist(card.checklist ?? []);
+    setEditComments(card.comments ?? []);
+    setEditColor(card.color ?? null);
     setNewChecklistText("");
+    setNewCommentText("");
     setTitleError(false);
     setIsEditing(true);
   };
@@ -105,13 +113,23 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
     setEditChecklist((prev) => prev.filter((item) => item.id !== itemId));
   };
 
+  const addComment = () => {
+    const text = newCommentText.trim();
+    if (!text) return;
+    setEditComments((prev) => [
+      ...prev,
+      { id: createId("cmt"), text, created_at: new Date().toISOString() },
+    ]);
+    setNewCommentText("");
+  };
+
   const handleSave = () => {
     const trimmed = editTitle.trim();
     if (!trimmed) {
       setTitleError(true);
       return;
     }
-    onEdit(card.id, trimmed, editDetails, editPriority, editDueDate || null, editLabels, editChecklist);
+    onEdit(card.id, trimmed, editDetails, editPriority, editDueDate || null, editLabels, editChecklist, editComments, editColor);
     setTitleError(false);
     setIsEditing(false);
   };
@@ -124,6 +142,7 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
   const dueDateInfo = card.due_date ? formatDueDate(card.due_date) : null;
   const checklist = card.checklist ?? [];
   const checklistDone = checklist.filter((i) => i.done).length;
+  const commentCount = (card.comments ?? []).length;
   const shadowClass = isDragging
     ? "shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
     : dueDateInfo?.overdue
@@ -133,7 +152,7 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
   return (
     <article
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, borderTop: card.color ? `3px solid ${card.color}` : undefined }}
       className={clsx(
         "rounded-2xl border border-transparent bg-white px-4 py-4",
         "transition-all duration-150",
@@ -301,6 +320,75 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
             </div>
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
+              Color
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setEditColor(null)}
+                className={clsx(
+                  "h-5 w-5 rounded-full border-2 bg-[var(--surface)] transition",
+                  editColor === null ? "border-[var(--navy-dark)]" : "border-[var(--stroke)]"
+                )}
+                aria-label="No color"
+                title="None"
+              />
+              {CARD_COLORS.map((c) => (
+                <button
+                  key={c.hex}
+                  type="button"
+                  onClick={() => setEditColor(c.hex)}
+                  style={{ backgroundColor: c.hex }}
+                  className={clsx(
+                    "h-5 w-5 rounded-full border-2 transition",
+                    editColor === c.hex ? "border-[var(--navy-dark)]" : "border-transparent"
+                  )}
+                  aria-label={c.label}
+                  title={c.label}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
+              Comments
+            </span>
+            <div className="flex flex-col gap-1.5">
+              {editComments.map((cmt) => (
+                <div key={cmt.id} className="rounded-lg bg-[var(--surface)] px-3 py-2">
+                  <p className="text-xs text-[var(--navy-dark)]">{cmt.text}</p>
+                  <p className="mt-0.5 text-[10px] text-[var(--gray-text)]">
+                    {new Date(cmt.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              ))}
+              <div className="flex items-start gap-2">
+                <textarea
+                  value={newCommentText}
+                  onChange={(e) => setNewCommentText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addComment(); }
+                  }}
+                  placeholder="Add a comment..."
+                  rows={2}
+                  className="flex-1 resize-none rounded border border-[var(--stroke)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--navy-dark)] outline-none placeholder:text-[var(--gray-text)] focus:border-[var(--primary-blue)]"
+                  aria-label="New comment"
+                />
+                <button
+                  type="button"
+                  onClick={addComment}
+                  aria-label="Add comment"
+                  className="rounded border border-[var(--stroke)] px-2 py-1 text-[10px] font-semibold text-[var(--gray-text)] hover:border-[var(--navy-dark)] hover:text-[var(--navy-dark)]"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -379,6 +467,11 @@ export const KanbanCard = ({ card, otherColumns, onArchive, onDuplicate, onMoveT
                     )}
                   >
                     {checklistDone} / {checklist.length}
+                  </span>
+                )}
+                {commentCount > 0 && (
+                  <span className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--gray-text)]">
+                    {commentCount} comment{commentCount === 1 ? "" : "s"}
                   </span>
                 )}
               </div>

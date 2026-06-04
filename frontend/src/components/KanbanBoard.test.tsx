@@ -121,6 +121,8 @@ describe("KanbanBoard", () => {
               due_date: null,
               labels: [],
               checklist: [],
+              comments: [],
+              color: null,
             }),
           }),
         })
@@ -154,6 +156,51 @@ describe("KanbanBoard", () => {
     expect(screen.getByText("Sign out")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Change password"));
     expect(screen.getByLabelText("Current password")).toBeInTheDocument();
+  });
+
+  it("sets card color accent and saves", async () => {
+    renderBoard();
+    const column = getFirstColumn();
+    await userEvent.click(
+      within(column).getByRole("button", { name: "Edit Align roadmap themes" })
+    );
+    await userEvent.click(within(column).getByRole("button", { name: "Red" }));
+    await userEvent.click(within(column).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(vi.mocked(saveBoard)).toHaveBeenCalledWith(
+        BOARD_ID,
+        expect.objectContaining({
+          cards: expect.objectContaining({
+            "card-1": expect.objectContaining({ color: "#ef4444" }),
+          }),
+        })
+      )
+    );
+  });
+
+  it("adds a comment in edit mode and saves", async () => {
+    renderBoard();
+    const column = getFirstColumn();
+    await userEvent.click(
+      within(column).getByRole("button", { name: "Edit Align roadmap themes" })
+    );
+    await userEvent.type(within(column).getByLabelText("New comment"), "Great progress!");
+    await userEvent.click(within(column).getByRole("button", { name: "Add comment" }));
+    await userEvent.click(within(column).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(vi.mocked(saveBoard)).toHaveBeenCalledWith(
+        BOARD_ID,
+        expect.objectContaining({
+          cards: expect.objectContaining({
+            "card-1": expect.objectContaining({
+              comments: expect.arrayContaining([
+                expect.objectContaining({ text: "Great progress!" }),
+              ]),
+            }),
+          }),
+        })
+      )
+    );
   });
 
   it("duplicates a card and saves", async () => {

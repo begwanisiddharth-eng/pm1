@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { Card, CardFilter, ChecklistItem, Column, Priority } from "@/lib/kanban";
+import type { Card, CardFilter, ChecklistItem, Column, Comment, Priority } from "@/lib/kanban";
 import { matchesFilter } from "@/lib/kanban";
 import { KanbanCard } from "@/components/KanbanCard";
 import { NewCardForm } from "@/components/NewCardForm";
@@ -16,7 +16,7 @@ type KanbanColumnProps = {
   filter?: CardFilter;
   onRename: (columnId: string, title: string) => void;
   onAddCard: (columnId: string, title: string, details: string) => void;
-  onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null, labels: string[], checklist: ChecklistItem[]) => void;
+  onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null, labels: string[], checklist: ChecklistItem[], comments: Comment[], color: string | null) => void;
   onArchiveCard: (columnId: string, cardId: string) => void;
   onDuplicateCard: (columnId: string, cardId: string) => void;
   onMoveCardToColumn: (cardId: string, fromColumnId: string, toColumnId: string) => void;

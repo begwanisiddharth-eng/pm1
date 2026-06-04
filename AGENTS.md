@@ -23,6 +23,9 @@ This project is a local Project Management App. Implemented features:
 - Board columns show a card count badge; zero-card columns show a visual empty state prompt.
 - Cards can be duplicated (clone with a single click).
 - The AI sidebar history can be cleared via a "Clear chat" button.
+- Cards can have an accent color (one of several preset colors) for at-a-glance grouping.
+- Cards support timestamped text comments; comments are shown in view mode and editable in the edit panel.
+- The current board can be exported to a JSON file via a button in the board header.
 
 ## Technical Decisions
 

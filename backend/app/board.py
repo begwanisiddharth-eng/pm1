@@ -17,6 +17,12 @@ class ChecklistItem(BaseModel):
     done: bool = False
 
 
+class Comment(BaseModel):
+    id: str
+    text: str
+    created_at: str
+
+
 class Card(BaseModel):
     id: str
     title: str
@@ -25,6 +31,8 @@ class Card(BaseModel):
     due_date: str | None = None
     labels: list[str] = []
     checklist: list[ChecklistItem] = []
+    comments: list[Comment] = []
+    color: str | None = None
     archived: bool = False
 
 

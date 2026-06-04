@@ -78,7 +78,7 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 - `components/BoardSelector.tsx` — lists boards, inline create-board form
 - `components/KanbanBoard.tsx` — owns board state; all mutations follow `prev → next → setBoard(next) → persist(prev, next)`; on failure rolls back to `prev`; AI updates skip `persist()` (backend already saved); holds filter state
 - `components/KanbanColumn.tsx` — column rendering, rename, delete with confirmation, applies card filter; card count badge in header; empty-state prompt when zero visible cards
-- `components/KanbanCard.tsx` — draggable card; view shows priority badge, due-date chip, label chips, checklist progress, duplicate button; edit has all fields including checklist items; state initialized on open (no useEffect sync)
+- `components/KanbanCard.tsx` — draggable card; view shows accent color strip, priority badge, due-date chip, label chips, checklist progress, comment count, duplicate button; edit has all fields including checklist items and comments; state initialized on open (no useEffect sync)
 - `components/KanbanCardPreview.tsx` — read-only card in `DragOverlay` while dragging
 - `components/NewCardForm.tsx` — toggle-open add-card form used by `KanbanColumn`
 - `components/AddColumnForm.tsx` — toggle-open tile for adding a new column
@@ -101,6 +101,8 @@ type BoardData = {
     due_date?: string|null;
     labels?: string[];
     checklist?: { id: string; text: string; done: boolean }[];
+    comments?: { id: string; text: string; created_at: string }[];
+    color?: string | null;
     archived?: boolean;
   }>;
   description?: string;

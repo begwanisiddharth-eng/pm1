@@ -460,3 +460,67 @@ def test_put_board_description_defaults_to_none(
     resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
     assert resp.status_code == 200
     assert resp.json()["description"] is None
+
+
+# --- Card color tests ---
+
+def test_put_board_card_color_saved_and_returned(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "Colored card", "details": "Has color", "color": "#ef4444"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["cards"]["c1"]["color"] == "#ef4444"
+
+
+def test_put_board_card_color_defaults_to_none(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "No color", "details": "Plain card"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["cards"]["c1"]["color"] is None
+
+
+# --- Card comments tests ---
+
+def test_put_board_card_comments_saved_and_returned(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {
+                "id": "c1",
+                "title": "Card with comments",
+                "details": "Has comments",
+                "comments": [
+                    {"id": "cmt-1", "text": "First comment", "created_at": "2026-06-04T10:00:00Z"},
+                    {"id": "cmt-2", "text": "Second comment", "created_at": "2026-06-04T11:00:00Z"},
+                ],
+            }
+        },
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    card = resp.json()["cards"]["c1"]
+    assert len(card["comments"]) == 2
+    assert card["comments"][0] == {"id": "cmt-1", "text": "First comment", "created_at": "2026-06-04T10:00:00Z"}
+
+
+def test_put_board_card_comments_defaults_to_empty(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "No comments", "details": "Plain card"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["cards"]["c1"]["comments"] == []

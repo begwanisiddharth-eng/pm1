@@ -20,7 +20,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { BoardStats } from "@/components/BoardStats";
 import { ArchivePanel } from "@/components/ArchivePanel";
 import { ChangePasswordModal } from "@/components/ChangePasswordModal";
-import { createId, moveCard, moveColumn, type BoardData, type ChecklistItem, type Priority, type CardFilter } from "@/lib/kanban";
+import { createId, moveCard, moveColumn, type BoardData, type ChecklistItem, type Comment, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/api";
 
@@ -265,6 +265,8 @@ export const KanbanBoard = ({
     dueDate: string | null,
     labels: string[],
     checklist: ChecklistItem[],
+    comments: Comment[],
+    color: string | null,
   ) => {
     const prev = board;
     const next: BoardData = {
@@ -279,11 +281,23 @@ export const KanbanBoard = ({
           due_date: dueDate,
           labels,
           checklist,
+          comments,
+          color,
         },
       },
     };
     setBoard(next);
     void persist(prev, next);
+  };
+
+  const handleExportJson = () => {
+    const blob = new Blob([JSON.stringify(board, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${currentBoardName.replace(/\s+/g, "-").toLowerCase()}-board.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleSaveDescription = () => {
@@ -443,6 +457,13 @@ export const KanbanBoard = ({
                   Delete board
                 </button>
               )}
+              <button
+                type="button"
+                onClick={handleExportJson}
+                className="rounded-xl border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+              >
+                Export JSON
+              </button>
               <div className="relative">
                 <button
                   type="button"
