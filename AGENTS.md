@@ -14,7 +14,9 @@ This project is a local Project Management App. Implemented features:
 - A filter bar lets users search cards by text, filter by priority, and show overdue-only.
 - Board header shows live summary stats: total cards, overdue count, checklist completion.
 - There is an AI chat sidebar; the AI can create, edit, move, and reorganize cards and columns.
-  The AI preserves card metadata (priority, due_date, labels) when updating the board.
+  The AI preserves card metadata (priority, due_date, labels, checklist) when updating the board.
+- Cards can be archived (soft-deleted); an archive panel lets users view and restore archived cards.
+- Users can set a board description; it appears beneath the board title.
 
 ## Technical Decisions
 

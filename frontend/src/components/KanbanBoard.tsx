@@ -18,6 +18,7 @@ import { AISidebar } from "@/components/AISidebar";
 import { AddColumnForm } from "@/components/AddColumnForm";
 import { FilterBar } from "@/components/FilterBar";
 import { BoardStats } from "@/components/BoardStats";
+import { ArchivePanel } from "@/components/ArchivePanel";
 import { createId, moveCard, moveColumn, type BoardData, type ChecklistItem, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/api";
@@ -49,6 +50,8 @@ export const KanbanBoard = ({
   const [currentBoardName, setCurrentBoardName] = useState(boardName);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [filter, setFilter] = useState<CardFilter>({ search: "", priority: null, overdueOnly: false });
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState(initialBoard.description ?? "");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -152,18 +155,74 @@ export const KanbanBoard = ({
     void persist(prev, next);
   };
 
-  const handleDeleteCard = (columnId: string, cardId: string) => {
+  const handleArchiveCard = (columnId: string, cardId: string) => {
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      cards: {
+        ...board.cards,
+        [cardId]: { ...board.cards[cardId], archived: true },
+      },
+      columns: board.columns.map((col) =>
+        col.id === columnId
+          ? { ...col, cardIds: col.cardIds.filter((id) => id !== cardId) }
+          : col
+      ),
+      archivedCardIds: [...(board.archivedCardIds ?? []), cardId],
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
+  const handleRestoreCard = (cardId: string) => {
+    const card = board.cards[cardId];
+    if (!card) return;
+    const firstColumnId = board.columns[0]?.id;
+    if (!firstColumnId) return;
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      cards: {
+        ...board.cards,
+        [cardId]: { ...card, archived: false },
+      },
+      columns: board.columns.map((col) =>
+        col.id === firstColumnId
+          ? { ...col, cardIds: [...col.cardIds, cardId] }
+          : col
+      ),
+      archivedCardIds: (board.archivedCardIds ?? []).filter((id) => id !== cardId),
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
+  const handleDeleteArchivedCard = (cardId: string) => {
     const prev = board;
     const next: BoardData = {
       ...board,
       cards: Object.fromEntries(
         Object.entries(board.cards).filter(([id]) => id !== cardId)
       ),
-      columns: board.columns.map((col) =>
-        col.id === columnId
-          ? { ...col, cardIds: col.cardIds.filter((id) => id !== cardId) }
-          : col
-      ),
+      archivedCardIds: (board.archivedCardIds ?? []).filter((id) => id !== cardId),
+    };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
+  const handleMoveCardToColumn = (cardId: string, fromColumnId: string, toColumnId: string) => {
+    const prev = board;
+    const next: BoardData = {
+      ...board,
+      columns: board.columns.map((col) => {
+        if (col.id === fromColumnId) {
+          return { ...col, cardIds: col.cardIds.filter((id) => id !== cardId) };
+        }
+        if (col.id === toColumnId) {
+          return { ...col, cardIds: [...col.cardIds, cardId] };
+        }
+        return col;
+      }),
     };
     setBoard(next);
     void persist(prev, next);
@@ -194,6 +253,15 @@ export const KanbanBoard = ({
         },
       },
     };
+    setBoard(next);
+    void persist(prev, next);
+  };
+
+  const handleSaveDescription = () => {
+    setEditingDescription(false);
+    const desc = descriptionDraft.trim() || null;
+    const prev = board;
+    const next: BoardData = { ...board, description: desc };
     setBoard(next);
     void persist(prev, next);
   };
@@ -295,6 +363,28 @@ export const KanbanBoard = ({
                   {currentBoardName}
                 </h1>
               )}
+              {editingDescription ? (
+                <input
+                  autoFocus
+                  value={descriptionDraft}
+                  onChange={(e) => setDescriptionDraft(e.target.value)}
+                  onBlur={handleSaveDescription}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveDescription();
+                    if (e.key === "Escape") { setEditingDescription(false); setDescriptionDraft(board.description ?? ""); }
+                  }}
+                  placeholder="Add a board description..."
+                  className="mt-1 w-full max-w-sm rounded-lg border border-[var(--stroke)] bg-[var(--surface)] px-2.5 py-1 text-sm text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)] placeholder:text-[var(--gray-text)]"
+                />
+              ) : (
+                <p
+                  className="mt-1 cursor-pointer text-sm text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
+                  title="Click to edit description"
+                  onClick={() => setEditingDescription(true)}
+                >
+                  {board.description || "Add a description..."}
+                </p>
+              )}
             </div>
             <div className="flex items-start gap-3">
               {confirmDelete ? (
@@ -367,11 +457,15 @@ export const KanbanBoard = ({
                           const card = board.cards[cardId];
                           return card ? [card] : [];
                         })}
+                        otherColumns={board.columns
+                          .filter((c) => c.id !== column.id)
+                          .map((c) => ({ id: c.id, title: c.title }))}
                         filter={filter}
                         onRename={handleRenameColumn}
                         onAddCard={handleAddCard}
-                        onDeleteCard={handleDeleteCard}
                         onEditCard={handleEditCard}
+                        onArchiveCard={handleArchiveCard}
+                        onMoveCardToColumn={handleMoveCardToColumn}
                         onDeleteColumn={handleDeleteColumn}
                       />
                     </div>
@@ -390,6 +484,17 @@ export const KanbanBoard = ({
           </div>
           <AISidebar boardId={boardId} onBoardUpdate={handleAiBoardUpdate} />
         </div>
+
+        {(board.archivedCardIds ?? []).length > 0 && (
+          <ArchivePanel
+            archivedCards={(board.archivedCardIds ?? []).flatMap((id) => {
+              const card = board.cards[id];
+              return card ? [card] : [];
+            })}
+            onRestore={handleRestoreCard}
+            onDelete={handleDeleteArchivedCard}
+          />
+        )}
       </main>
     </div>
   );

@@ -401,3 +401,62 @@ def test_get_board_returns_checklist(
     assert resp.status_code == 200
     card = resp.json()["cards"]["c1"]
     assert card["checklist"] == [{"id": "item-a", "text": "Do it", "done": True}]
+
+
+# --- Archive and description tests ---
+
+
+def test_put_board_archived_card_round_trips(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {
+            "c1": {"id": "c1", "title": "Active", "details": "Visible"},
+            "c2": {"id": "c2", "title": "Archived", "details": "Hidden", "archived": True},
+        },
+        "archivedCardIds": ["c2"],
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["archivedCardIds"] == ["c2"]
+    assert data["cards"]["c2"]["archived"] is True
+    assert "c2" not in data["columns"][0]["cardIds"]
+
+
+def test_put_board_archived_card_ids_default_empty(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "Only", "details": "Card"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["archivedCardIds"] == []
+
+
+def test_put_board_description_saved_and_returned(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "Task", "details": "Do it"}},
+        "description": "My project board for Q3",
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["description"] == "My project board for Q3"
+
+
+def test_put_board_description_defaults_to_none(
+    auth_client: TestClient, default_board_id: int
+) -> None:
+    board = {
+        "columns": [{"id": "col-1", "title": "Work", "cardIds": ["c1"]}],
+        "cards": {"c1": {"id": "c1", "title": "Task", "details": "Do it"}},
+    }
+    resp = auth_client.put(f"/api/boards/{default_board_id}", json=board)
+    assert resp.status_code == 200
+    assert resp.json()["description"] is None

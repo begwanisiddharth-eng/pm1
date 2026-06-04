@@ -352,6 +352,46 @@ Deepen the PM experience with three targeted improvements:
 - Board header shows accurate live stats.
 - All existing tests continue to pass.
 
+## Part 13: Card Archive, Board Description, and Card Move-to-Column
+
+### Goal
+
+Three targeted PM improvements:
+1. Cards can be archived instead of deleted; an archive panel lets users view and restore them.
+2. Boards can have a description (editable inline); stored in the board's JSON.
+3. A "Move to..." dropdown on each card lets users move it to any other column without dragging.
+
+### Checklist
+
+- [ ] Backend: extend `BoardData` to allow `description?: str | None` and `archivedCardIds?: list[str]`.
+- [ ] Backend: extend `Card` to allow `archived?: bool` (default `False`).
+- [ ] Backend: archived cards are not sent to AI (filter from board JSON before AI call).
+- [ ] Backend: add tests for archive round-trip (save archived card, restore it).
+- [ ] Frontend `kanban.ts`: add `archived?` to `Card`, `archivedCardIds?` and `description?` to `BoardData`.
+- [ ] Frontend `KanbanCard.tsx`: replace "Remove" with "Archive" in view mode (soft delete).
+- [ ] Frontend `KanbanBoard.tsx`: `handleArchiveCard` removes card from column `cardIds` and adds to `archivedCardIds`; `handleRestoreCard` reverses it.
+- [ ] Frontend `ArchivePanel.tsx`: collapsible panel showing archived cards; Restore and Delete buttons per card; shown below the board or in a toggle.
+- [ ] Frontend `KanbanBoard.tsx`: add board description below title; click to edit inline.
+- [ ] Frontend `KanbanCard.tsx`: add "Move to..." dropdown (columns excluding current); selecting moves the card.
+- [ ] Frontend tests: archive/restore unit tests; board description save test; move-to test.
+- [ ] ESLint clean; build succeeds; all prior tests still passing.
+
+### Tests
+
+- Backend: PUT board with archived card round-trips correctly.
+- Backend: `archivedCardIds` defaults to `[]` when omitted.
+- Frontend: archiving a card removes it from its column and adds to archive panel.
+- Frontend: restoring a card from archive puts it back in its original column's end.
+- Frontend: board description saves on blur.
+- Frontend: move-to dropdown moves card to selected column.
+
+### Success Criteria
+
+- Archived cards are hidden from the board but recoverable.
+- Board description is editable and persists.
+- Cards can be moved between columns without drag-and-drop.
+- All existing tests continue to pass.
+
 ## Public API Summary
 
 Planned backend routes:

@@ -7,25 +7,31 @@ import { matchesFilter } from "@/lib/kanban";
 import { KanbanCard } from "@/components/KanbanCard";
 import { NewCardForm } from "@/components/NewCardForm";
 
+type OtherColumn = { id: string; title: string };
+
 type KanbanColumnProps = {
   column: Column;
   cards: Card[];
+  otherColumns: OtherColumn[];
   filter?: CardFilter;
   onRename: (columnId: string, title: string) => void;
   onAddCard: (columnId: string, title: string, details: string) => void;
-  onDeleteCard: (columnId: string, cardId: string) => void;
   onEditCard: (cardId: string, title: string, details: string, priority: Priority | null, dueDate: string | null, labels: string[], checklist: ChecklistItem[]) => void;
+  onArchiveCard: (columnId: string, cardId: string) => void;
+  onMoveCardToColumn: (cardId: string, fromColumnId: string, toColumnId: string) => void;
   onDeleteColumn: (columnId: string) => void;
 };
 
 export const KanbanColumn = ({
   column,
   cards,
+  otherColumns,
   filter,
   onRename,
   onAddCard,
-  onDeleteCard,
   onEditCard,
+  onArchiveCard,
+  onMoveCardToColumn,
   onDeleteColumn,
 }: KanbanColumnProps) => {
   const {
@@ -147,7 +153,9 @@ export const KanbanColumn = ({
             <KanbanCard
               key={card.id}
               card={card}
-              onDelete={(cardId) => onDeleteCard(column.id, cardId)}
+              otherColumns={otherColumns}
+              onArchive={(cardId) => onArchiveCard(column.id, cardId)}
+              onMoveToColumn={(cardId, targetId) => onMoveCardToColumn(cardId, column.id, targetId)}
               onEdit={onEditCard}
             />
           ))}

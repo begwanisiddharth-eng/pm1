@@ -1,3 +1,4 @@
+import json
 import logging
 import sqlite3
 from typing import Literal
@@ -53,7 +54,20 @@ def ai_chat_endpoint(
     _verify_board_ownership(db, body.board_id, user_id)
 
     board_json = fetch_board_content(db, body.board_id)
-    system_content = f"{_SYSTEM_PROMPT}\n\nCurrent board (JSON):\n{board_json}"
+    # Build an AI-visible board that excludes archived cards
+    existing_board_full = BoardData.model_validate_json(board_json)
+    archived_ids = set(existing_board_full.archivedCardIds)
+    ai_board_dict = {
+        "columns": [c.model_dump() for c in existing_board_full.columns],
+        "cards": {
+            k: v.model_dump()
+            for k, v in existing_board_full.cards.items()
+            if k not in archived_ids
+        },
+    }
+    # Use json.dumps directly — avoids calling BoardData.model_validate before the AI response
+    ai_board_json = json.dumps(ai_board_dict)
+    system_content = f"{_SYSTEM_PROMPT}\n\nCurrent board (JSON):\n{ai_board_json}"
 
     messages: list[dict] = [{"role": "system", "content": system_content}]
     for msg in body.history[-_MAX_HISTORY_MESSAGES:]:
@@ -69,9 +83,8 @@ def ai_chat_endpoint(
             if len(card_ids) != len(set(card_ids)):
                 raise ValueError("AI response contains duplicate card IDs")
 
-            # Preserve card metadata (priority, due_date, labels) from existing board
-            existing_board = BoardData.model_validate_json(board_json)
-            existing_cards = existing_board.cards
+            # Preserve card metadata from existing board
+            existing_cards = existing_board_full.cards
 
             cards_dict: dict[str, dict] = {}
             for ai_card in ai_response.board.cards:
@@ -84,9 +97,16 @@ def ai_chat_endpoint(
                     card_dict["checklist"] = [item.model_dump() for item in existing.checklist]
                 cards_dict[ai_card.id] = card_dict
 
+            # Carry archived cards back into the merged board
+            for aid in existing_board_full.archivedCardIds:
+                if aid in existing_cards and aid not in cards_dict:
+                    cards_dict[aid] = existing_cards[aid].model_dump()
+
             board_dict = {
                 "columns": [c.model_dump() for c in ai_response.board.columns],
                 "cards": cards_dict,
+                "description": existing_board_full.description,
+                "archivedCardIds": existing_board_full.archivedCardIds,
             }
             validated = BoardData.model_validate(board_dict)
             if save_board_content(db, body.board_id, validated.model_dump_json()):

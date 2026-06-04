@@ -187,3 +187,16 @@ This file tracks the work required to complete the Project Management MVP. Mark 
 - [x] Frontend `KanbanBoard.tsx`: render `BoardStats` in board header; import `BoardStats`.
 - [x] Frontend tests: 4 `moveColumn` unit tests; checklist field in edit assertion; 58 backend + 31 frontend passing.
 - [x] ESLint clean; build succeeds.
+
+## Part 13: Card Archive, Board Description, and Move-to-Column (Iteration 5)
+
+- [x] Backend: add `archived: bool = False` to `Card` model.
+- [x] Backend: add `description: str | None = None` and `archivedCardIds: list[str] = []` to `BoardData`.
+- [x] Backend: filter archived cards from board JSON before sending to AI; re-add archived cards to merged board.
+- [x] Backend: add 4 archive/description round-trip tests (62 backend tests total).
+- [x] Frontend `kanban.ts`: add `archived?` to `Card`; `archivedCardIds?` and `description?` to `BoardData`.
+- [x] Frontend `KanbanCard.tsx`: replace "Remove" with "Archive"; add "Move to..." dropdown per card.
+- [x] Frontend `KanbanBoard.tsx`: `handleArchiveCard`, `handleRestoreCard`, `handleDeleteArchivedCard`, `handleMoveCardToColumn`; board description inline edit; `handleSaveDescription`.
+- [x] Frontend `ArchivePanel.tsx`: collapsible panel; Restore and Delete per archived card.
+- [x] Frontend tests: archive button test updated; 31 frontend tests passing.
+- [x] ESLint clean (0 errors, 0 warnings); build succeeds.

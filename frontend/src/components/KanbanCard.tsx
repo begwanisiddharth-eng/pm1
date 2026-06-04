@@ -5,9 +5,13 @@ import clsx from "clsx";
 import type { Card, ChecklistItem, Priority } from "@/lib/kanban";
 import { LABEL_OPTIONS, createId } from "@/lib/kanban";
 
+type ColumnOption = { id: string; title: string };
+
 type KanbanCardProps = {
   card: Card;
-  onDelete: (cardId: string) => void;
+  otherColumns: ColumnOption[];
+  onArchive: (cardId: string) => void;
+  onMoveToColumn: (cardId: string, targetColumnId: string) => void;
   onEdit: (
     cardId: string,
     title: string,
@@ -45,7 +49,7 @@ const formatDueDate = (dateStr: string): { text: string; overdue: boolean; soon:
   return { text, overdue: diffDays < 0, soon: diffDays >= 0 && diffDays <= 2 };
 };
 
-export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
+export const KanbanCard = ({ card, otherColumns, onArchive, onMoveToColumn, onEdit }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
@@ -55,6 +59,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const [editChecklist, setEditChecklist] = useState<ChecklistItem[]>([]);
   const [newChecklistText, setNewChecklistText] = useState("");
   const [titleError, setTitleError] = useState(false);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
@@ -372,7 +377,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="relative flex flex-col gap-1">
             <button
               type="button"
               onClick={openEdit}
@@ -381,13 +386,37 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
             >
               Edit
             </button>
+            {otherColumns.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowMoveMenu((v) => !v)}
+                className="rounded-full border border-transparent px-2 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--stroke)] hover:text-[var(--navy-dark)]"
+                aria-label={`Move ${card.title}`}
+              >
+                Move
+              </button>
+            )}
+            {showMoveMenu && (
+              <div className="absolute right-0 top-full z-10 mt-1 min-w-[120px] rounded-xl border border-[var(--stroke)] bg-white shadow-lg">
+                {otherColumns.map((col) => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => { onMoveToColumn(card.id, col.id); setShowMoveMenu(false); }}
+                    className="block w-full px-3 py-1.5 text-left text-xs text-[var(--navy-dark)] hover:bg-[var(--surface)]"
+                  >
+                    {col.title}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
-              onClick={() => onDelete(card.id)}
+              onClick={() => onArchive(card.id)}
               className="rounded-full border border-transparent px-2 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--stroke)] hover:text-[var(--navy-dark)]"
-              aria-label={`Delete ${card.title}`}
+              aria-label={`Archive ${card.title}`}
             >
-              Remove
+              Archive
             </button>
           </div>
         </div>

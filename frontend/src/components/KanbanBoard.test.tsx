@@ -78,11 +78,11 @@ describe("KanbanBoard", () => {
     await waitFor(() => expect(vi.mocked(saveBoard)).toHaveBeenCalled());
   });
 
-  it("deletes a card and saves", async () => {
+  it("archives a card and saves", async () => {
     renderBoard();
     const column = getFirstColumn();
     await userEvent.click(
-      within(column).getByRole("button", { name: "Delete Align roadmap themes" })
+      within(column).getByRole("button", { name: "Archive Align roadmap themes" })
     );
     expect(
       within(column).queryByText("Align roadmap themes")

@@ -14,6 +14,7 @@ export type Card = {
   due_date?: string | null;
   labels?: string[];
   checklist?: ChecklistItem[];
+  archived?: boolean;
 };
 
 export type LabelOption = {
@@ -70,6 +71,8 @@ export type Column = {
 export type BoardData = {
   columns: Column[];
   cards: Record<string, Card>;
+  description?: string | null;
+  archivedCardIds?: string[];
 };
 
 export const initialData: BoardData = {

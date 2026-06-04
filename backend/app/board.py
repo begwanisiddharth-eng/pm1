@@ -25,6 +25,7 @@ class Card(BaseModel):
     due_date: str | None = None
     labels: list[str] = []
     checklist: list[ChecklistItem] = []
+    archived: bool = False
 
 
 class Column(BaseModel):
@@ -36,17 +37,29 @@ class Column(BaseModel):
 class BoardData(BaseModel):
     columns: list[Column]
     cards: dict[str, Card]
+    description: str | None = None
+    archivedCardIds: list[str] = []
 
     @model_validator(mode="after")
     def check_card_refs(self) -> "BoardData":
+        # Active cards referenced by columns
         referenced = {cid for col in self.columns for cid in col.cardIds}
+        # All cards defined (active + archived)
         defined = set(self.cards.keys())
-        if referenced != defined:
-            dangling = referenced - defined
-            orphaned = defined - referenced
+        # Archived card IDs must exist in cards dict
+        archived_ids = set(self.archivedCardIds)
+        # Active cards = defined minus archived
+        active_defined = defined - archived_ids
+        if referenced != active_defined:
+            dangling = referenced - active_defined
+            orphaned = active_defined - referenced
             raise ValueError(
                 f"cardIds/cards mismatch: dangling={dangling}, orphaned={orphaned}"
             )
+        # Archived IDs must exist in cards
+        missing_archived = archived_ids - defined
+        if missing_archived:
+            raise ValueError(f"archivedCardIds references missing cards: {missing_archived}")
         return self
 
 

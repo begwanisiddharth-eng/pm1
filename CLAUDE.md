@@ -85,6 +85,7 @@ All traffic goes through FastAPI on `http://127.0.0.1:8000`. The Next.js app is 
 - `components/FilterBar.tsx` — search text, priority filter chips, overdue toggle
 - `components/AISidebar.tsx` — chat history, input, send; passes `boardId` to `chatWithBoard`
 - `components/BoardStats.tsx` — shows total cards, overdue count, checklist completion in board header
+- `components/ArchivePanel.tsx` — collapsible panel listing archived cards; restore button per card
 
 ### Data Model
 
@@ -99,11 +100,16 @@ type BoardData = {
     due_date?: string|null;
     labels?: string[];
     checklist?: { id: string; text: string; done: boolean }[];
+    archived?: boolean;
   }>;
+  description?: string;
+  archivedCardIds?: string[];
 }
 ```
 
-The AI returns cards as a flat list (OpenAI Structured Outputs constraint). `ai_router.py` converts this to the dict shape, merges existing metadata (priority, due_date, labels, checklist), validates, and saves.
+`archived: true` cards are removed from column `cardIds` and listed in `archivedCardIds`. The archive panel shows them and lets users restore them.
+
+The AI returns cards as a flat list (OpenAI Structured Outputs constraint). `ai_router.py` converts this to the dict shape, merges existing metadata (priority, due_date, labels, checklist), validates, and saves. Archived cards are not sent to the AI.
 
 ### Authentication
 
