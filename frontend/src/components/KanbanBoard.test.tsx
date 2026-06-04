@@ -7,11 +7,25 @@ import { saveBoard } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({
   saveBoard: vi.fn().mockResolvedValue(undefined),
+  renameBoard: vi.fn().mockResolvedValue({ id: 1, name: "Test Board", updated_at: "" }),
+  deleteBoard: vi.fn().mockResolvedValue(undefined),
   chatWithBoard: vi.fn(),
 }));
 
+const BOARD_ID = 1;
+
 const renderBoard = () =>
-  render(<KanbanBoard initialBoard={initialData} onLogout={vi.fn()} />);
+  render(
+    <KanbanBoard
+      initialBoard={initialData}
+      boardId={BOARD_ID}
+      boardName="Test Board"
+      onLogout={vi.fn()}
+      onSwitchBoards={vi.fn()}
+      onBoardRenamed={vi.fn()}
+      onBoardDeleted={vi.fn()}
+    />
+  );
 
 const getFirstColumn = () => screen.getAllByTestId(/^column-/)[0];
 
@@ -35,6 +49,7 @@ describe("KanbanBoard", () => {
     await userEvent.tab();
     await waitFor(() =>
       expect(vi.mocked(saveBoard)).toHaveBeenCalledWith(
+        BOARD_ID,
         expect.objectContaining({
           columns: expect.arrayContaining([
             expect.objectContaining({ title: "New Name" }),
@@ -93,6 +108,7 @@ describe("KanbanBoard", () => {
     expect(within(column).getByText("Updated details")).toBeInTheDocument();
     await waitFor(() =>
       expect(vi.mocked(saveBoard)).toHaveBeenCalledWith(
+        BOARD_ID,
         expect.objectContaining({
           cards: expect.objectContaining({
             "card-1": expect.objectContaining({

@@ -5,10 +5,11 @@ import { chatWithBoard, type ChatMessage } from "@/lib/api";
 import type { BoardData } from "@/lib/kanban";
 
 type Props = {
+  boardId: number;
   onBoardUpdate: (board: BoardData) => void;
 };
 
-export const AISidebar = ({ onBoardUpdate }: Props) => {
+export const AISidebar = ({ boardId, onBoardUpdate }: Props) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export const AISidebar = ({ onBoardUpdate }: Props) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await chatWithBoard(text, messages);
+      const result = await chatWithBoard(text, messages, boardId);
       setMessages([...nextHistory, { role: "assistant", content: result.message }]);
       if (result.board) {
         onBoardUpdate(result.board);

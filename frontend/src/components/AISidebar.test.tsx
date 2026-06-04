@@ -14,7 +14,7 @@ vi.mock("@/lib/api", () => ({
 const onBoardUpdate = vi.fn();
 
 const renderSidebar = () =>
-  render(<AISidebar onBoardUpdate={onBoardUpdate} />);
+  render(<AISidebar boardId={1} onBoardUpdate={onBoardUpdate} />);
 
 describe("AISidebar", () => {
   beforeEach(() => {

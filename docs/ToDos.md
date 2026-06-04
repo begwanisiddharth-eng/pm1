@@ -126,3 +126,29 @@ This file tracks the work required to complete the Project Management MVP. Mark 
 - [x] Add frontend AI sidebar tests.
 - [x] Add Playwright AI sidebar test with mocked backend.
 - [x] Run manual integration test with real OpenAI.
+
+## Part 11: User Management & Multiple Boards
+
+- [x] Add password hashing to users table (`pbkdf2:sha256`).
+- [x] Add database migration for existing databases (password_hash, board name columns).
+- [x] Update login to verify hashed password from database.
+- [x] Add `POST /api/auth/register` endpoint (username + password, min lengths enforced).
+- [x] Registration creates an initial "My Board" for new users.
+- [x] Add registration form to LoginForm component (toggle between sign-in and create account).
+- [x] Add `name` column to boards table.
+- [x] Add `GET /api/boards` — list user's boards (id, name, updated_at).
+- [x] Add `POST /api/boards` — create a new named board.
+- [x] Add `GET /api/boards/{board_id}` — get board content (auth + ownership enforced).
+- [x] Add `PUT /api/boards/{board_id}` — update board content.
+- [x] Add `PATCH /api/boards/{board_id}/name` — rename a board.
+- [x] Add `DELETE /api/boards/{board_id}` — delete board (blocked if it's the user's only board).
+- [x] Update `POST /api/ai/chat` to accept `board_id` (verified against current user).
+- [x] Add BoardSelector component (shows board list, create-board flow).
+- [x] Update page.tsx for board-selection phase (auto-selects if one board, shows selector if multiple).
+- [x] Update KanbanBoard — inline board rename, delete board with confirmation, "All boards" back button.
+- [x] Update AISidebar to accept and pass `boardId` to chat API.
+- [x] Cross-user board isolation enforced (ownership check on all board routes).
+- [x] Add comprehensive backend tests for all new routes (48 passing).
+- [x] Update frontend tests for new API signatures (19 passing).
+- [x] ESLint clean (0 errors, 0 warnings).
+- [x] Frontend builds successfully with TypeScript.

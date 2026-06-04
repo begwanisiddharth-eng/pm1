@@ -35,7 +35,7 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Invalid username or password.");
+    expect(alert).toHaveTextContent("Invalid credentials");
     expect(screen.getByRole("heading", { name: /sign in/i })).toBeInTheDocument();
   });
 });

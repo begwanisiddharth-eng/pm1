@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
@@ -12,8 +12,8 @@ type KanbanCardProps = {
 
 export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(card.title);
-  const [editDetails, setEditDetails] = useState(card.details);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDetails, setEditDetails] = useState("");
   const [titleError, setTitleError] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -24,12 +24,12 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
     transition,
   };
 
-  useEffect(() => {
-    if (!isEditing) {
-      setEditTitle(card.title);
-      setEditDetails(card.details);
-    }
-  }, [card.title, card.details, isEditing]);
+  const openEdit = () => {
+    setEditTitle(card.title);
+    setEditDetails(card.details);
+    setTitleError(false);
+    setIsEditing(true);
+  };
 
   const handleSave = () => {
     const trimmed = editTitle.trim();
@@ -43,8 +43,6 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   };
 
   const handleCancel = () => {
-    setEditTitle(card.title);
-    setEditDetails(card.details);
     setTitleError(false);
     setIsEditing(false);
   };
@@ -118,7 +116,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
           <div className="flex flex-col gap-1">
             <button
               type="button"
-              onClick={() => setIsEditing(true)}
+              onClick={openEdit}
               className="rounded-full border border-transparent px-2 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--stroke)] hover:text-[var(--navy-dark)]"
               aria-label={`Edit ${card.title}`}
             >

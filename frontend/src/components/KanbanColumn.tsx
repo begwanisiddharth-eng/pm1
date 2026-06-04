@@ -27,6 +27,7 @@ export const KanbanColumn = ({
   const [titleValue, setTitleValue] = useState(column.title);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTitleValue(column.title);
   }, [column.title]);
 

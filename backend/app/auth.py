@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException, Request
+import sqlite3
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/auth")
+from app.database import get_db, hash_password, verify_password, _EMPTY_BOARD
+import json
 
-_USERNAME = "user"
-_PASSWORD = "password"
+router = APIRouter(prefix="/api/auth")
 
 
 class LoginRequest(BaseModel):
@@ -12,12 +14,54 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+
 @router.post("/login")
-def login(body: LoginRequest, request: Request) -> dict[str, str]:
-    if body.username != _USERNAME or body.password != _PASSWORD:
+def login(
+    body: LoginRequest,
+    request: Request,
+    db: sqlite3.Connection = Depends(get_db),
+) -> dict[str, str]:
+    row = db.execute(
+        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        [body.username],
+    ).fetchone()
+    if not row or not verify_password(body.password, row["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    request.session["user"] = _USERNAME
-    return {"username": _USERNAME}
+    request.session["user"] = row["username"]
+    return {"username": row["username"]}
+
+
+@router.post("/register", status_code=201)
+def register(
+    body: RegisterRequest,
+    db: sqlite3.Connection = Depends(get_db),
+) -> dict[str, str]:
+    if len(body.username.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    existing = db.execute(
+        "SELECT 1 FROM users WHERE username = ?", [body.username.strip()]
+    ).fetchone()
+    if existing:
+        raise HTTPException(status_code=409, detail="Username already taken")
+    password_hash = hash_password(body.password)
+    cursor = db.execute(
+        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+        [body.username.strip(), password_hash],
+    )
+    db.commit()
+    user_id = cursor.lastrowid
+    db.execute(
+        "INSERT INTO boards (user_id, name, content) VALUES (?, ?, ?)",
+        [user_id, "My Board", json.dumps(_EMPTY_BOARD)],
+    )
+    db.commit()
+    return {"username": body.username.strip()}
 
 
 @router.post("/logout")

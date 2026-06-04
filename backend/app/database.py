@@ -1,4 +1,6 @@
+import hashlib
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -24,31 +26,91 @@ _SEED_BOARD = {
     },
 }
 
+_EMPTY_BOARD = {
+    "columns": [
+        {"id": "col-todo",        "title": "To Do",       "cardIds": []},
+        {"id": "col-in-progress", "title": "In Progress", "cardIds": []},
+        {"id": "col-done",        "title": "Done",        "cardIds": []},
+    ],
+    "cards": {},
+}
+
+
+def hash_password(password: str) -> str:
+    salt = os.urandom(16).hex()
+    key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+    return f"pbkdf2:sha256:100000:{salt}:{key.hex()}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    try:
+        _, alg, iterations, salt, key_hex = stored_hash.split(":")
+        key = hashlib.pbkdf2_hmac(alg, password.encode(), salt.encode(), int(iterations))
+        return key.hex() == key_hex
+    except Exception:
+        return False
+
 
 def init_db(path: Path = DB_PATH) -> None:
     conn = sqlite3.connect(path)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            username   TEXT    NOT NULL UNIQUE,
-            created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            username      TEXT    NOT NULL UNIQUE,
+            password_hash TEXT    NOT NULL DEFAULT '',
+            created_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
         CREATE TABLE IF NOT EXISTS boards (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id    INTEGER NOT NULL REFERENCES users(id),
+            name       TEXT    NOT NULL DEFAULT 'My Board',
             content    TEXT    NOT NULL,
             updated_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
     """)
-    conn.execute("INSERT OR IGNORE INTO users (username) VALUES (?)", ["user"])
-    user_id = conn.execute("SELECT id FROM users WHERE username = ?", ["user"]).fetchone()[0]
-    board_exists = conn.execute("SELECT 1 FROM boards WHERE user_id = ?", [user_id]).fetchone()
+
+    # Migration: add password_hash column to users if missing (older schema)
+    existing_user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+    if "password_hash" not in existing_user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''")
+
+    # Migration: add name column to boards if missing (older schema)
+    existing_board_cols = {row[1] for row in conn.execute("PRAGMA table_info(boards)")}
+    if "name" not in existing_board_cols:
+        conn.execute("ALTER TABLE boards ADD COLUMN name TEXT NOT NULL DEFAULT 'Main Board'")
+
+    # Seed the default user with a hashed password
+    row = conn.execute(
+        "SELECT id, password_hash FROM users WHERE username = 'user'"
+    ).fetchone()
+    if row is None:
+        ph = hash_password("password")
+        conn.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            ["user", ph],
+        )
+    elif row[1] == "":
+        # Upgrade legacy empty password_hash
+        ph = hash_password("password")
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE username = 'user'",
+            [ph],
+        )
+
+    user_id = conn.execute(
+        "SELECT id FROM users WHERE username = 'user'"
+    ).fetchone()[0]
+
+    board_exists = conn.execute(
+        "SELECT 1 FROM boards WHERE user_id = ?", [user_id]
+    ).fetchone()
     if not board_exists:
         conn.execute(
-            "INSERT INTO boards (user_id, content) VALUES (?, ?)",
-            [user_id, json.dumps(_SEED_BOARD)],
+            "INSERT INTO boards (user_id, name, content) VALUES (?, ?, ?)",
+            [user_id, "Main Board", json.dumps(_SEED_BOARD)],
         )
+
     conn.commit()
     conn.close()
 

@@ -32,3 +32,12 @@ def client(test_db: sqlite3.Connection) -> TestClient:
 def auth_client(client: TestClient) -> TestClient:
     client.post("/api/auth/login", json={"username": "user", "password": "password"})
     return client
+
+
+@pytest.fixture
+def default_board_id(auth_client: TestClient) -> int:
+    resp = auth_client.get("/api/boards")
+    assert resp.status_code == 200
+    boards = resp.json()
+    assert boards, "No boards found for seeded user"
+    return boards[0]["id"]
