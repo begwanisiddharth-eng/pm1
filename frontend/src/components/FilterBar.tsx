@@ -1,12 +1,6 @@
 import clsx from "clsx";
-import type { CardFilter, Priority } from "@/lib/kanban";
-
-const PRIORITY_CHIPS: { value: Priority; label: string; color: string }[] = [
-  { value: "low",      label: "Low",      color: "bg-green-100 text-green-700 border-green-300" },
-  { value: "medium",   label: "Medium",   color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  { value: "high",     label: "High",     color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "critical", label: "Critical", color: "bg-red-100 text-red-700 border-red-300" },
-];
+import type { CardFilter } from "@/lib/kanban";
+import { PRIORITY_OPTIONS } from "@/lib/kanban";
 
 type FilterBarProps = {
   filter: CardFilter;
@@ -51,20 +45,20 @@ export const FilterBar = ({ filter, onChange }: FilterBarProps) => {
         >
           All
         </button>
-        {PRIORITY_CHIPS.map((chip) => (
+        {PRIORITY_OPTIONS.map((opt) => (
           <button
-            key={chip.value}
+            key={opt.value}
             type="button"
-            onClick={() => setPriority(filter.priority === chip.value ? null : chip.value)}
+            onClick={() => setPriority(filter.priority === opt.value ? null : opt.value)}
             className={clsx(
               "rounded-full border px-2.5 py-0.5 text-xs font-semibold transition",
-              filter.priority === chip.value
-                ? chip.color + " border-current"
+              filter.priority === opt.value
+                ? opt.color + " border-current"
                 : "border-[var(--stroke)] text-[var(--gray-text)] hover:border-current"
             )}
-            aria-pressed={filter.priority === chip.value}
+            aria-pressed={filter.priority === opt.value}
           >
-            {chip.label}
+            {opt.label}
           </button>
         ))}
       </div>

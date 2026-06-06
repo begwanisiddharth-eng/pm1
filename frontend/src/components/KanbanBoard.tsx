@@ -24,6 +24,7 @@ import { ShortcutsModal } from "@/components/ShortcutsModal";
 import { createId, moveCard, moveColumn, timeAgo, type BoardData, type ChecklistItem, type Comment, type Priority, type CardFilter } from "@/lib/kanban";
 import { saveBoard, renameBoard, deleteBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/api";
+import { PageBackground } from "@/components/PageBackground";
 
 type KanbanBoardProps = {
   initialBoard: BoardData;
@@ -48,12 +49,14 @@ export const KanbanBoard = ({
   onBoardRenamed,
   onBoardDeleted,
 }: KanbanBoardProps) => {
-  const [board, setBoard] = useState<BoardData>(initialBoard);
+  const [board, setBoard] = useState<BoardData>({
+    ...initialBoard,
+    archivedCardIds: initialBoard.archivedCardIds ?? [],
+  });
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [editingBoardName, setEditingBoardName] = useState(false);
   const [boardNameDraft, setBoardNameDraft] = useState(boardName);
-  const [currentBoardName, setCurrentBoardName] = useState(boardName);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [filter, setFilter] = useState<CardFilter>({ search: "", priority: null, overdueOnly: false });
   const [editingDescription, setEditingDescription] = useState(false);
@@ -199,7 +202,7 @@ export const KanbanBoard = ({
           ? { ...col, cardIds: col.cardIds.filter((id) => id !== cardId) }
           : col
       ),
-      archivedCardIds: [...(board.archivedCardIds ?? []), cardId],
+      archivedCardIds: [...board.archivedCardIds, cardId],
     };
     setBoard(next);
     void persist(prev, next);
@@ -228,7 +231,7 @@ export const KanbanBoard = ({
           ? { ...col, cardIds: [...col.cardIds, cardId] }
           : col
       ),
-      archivedCardIds: (board.archivedCardIds ?? []).filter((id) => id !== cardId),
+      archivedCardIds: board.archivedCardIds.filter((id) => id !== cardId),
     };
     setBoard(next);
     void persist(prev, next);
@@ -241,7 +244,7 @@ export const KanbanBoard = ({
       cards: Object.fromEntries(
         Object.entries(board.cards).filter(([id]) => id !== cardId)
       ),
-      archivedCardIds: (board.archivedCardIds ?? []).filter((id) => id !== cardId),
+      archivedCardIds: board.archivedCardIds.filter((id) => id !== cardId),
     };
     setBoard(next);
     void persist(prev, next);
@@ -370,26 +373,12 @@ export const KanbanBoard = ({
             setSaveError("Import failed: one or more columns are missing required fields (id, title, cardIds).");
             return;
           }
-          if (col.wipLimit !== undefined && col.wipLimit !== null && (typeof col.wipLimit !== "number" || col.wipLimit < 1)) {
-            setSaveError("Import failed: wipLimit must be a positive number or null.");
-            return;
-          }
         }
         const cards = obj.cards as Record<string, unknown>;
         for (const card of Object.values(cards)) {
           const c = card as Record<string, unknown>;
           if (typeof c.id !== "string" || typeof c.title !== "string") {
             setSaveError("Import failed: one or more cards are missing required fields (id, title).");
-            return;
-          }
-        }
-        const allCardIds = cols.flatMap((col) => col.cardIds as string[]);
-        const archivedIds = new Set<string>(Array.isArray(obj.archivedCardIds) ? (obj.archivedCardIds as string[]) : []);
-        const activeIds = new Set(Object.keys(cards).filter((id) => !archivedIds.has(id)));
-        const referencedIds = new Set(allCardIds);
-        for (const id of referencedIds) {
-          if (!activeIds.has(id)) {
-            setSaveError(`Import failed: column references card "${id}" which does not exist.`);
             return;
           }
         }
@@ -405,9 +394,10 @@ export const KanbanBoard = ({
   const handleConfirmImport = async () => {
     if (!confirmImport) return;
     const prev = board;
-    setBoard(confirmImport);
+    const next = { ...confirmImport, archivedCardIds: confirmImport.archivedCardIds ?? [] };
+    setBoard(next);
     setConfirmImport(null);
-    void persist(prev, confirmImport);
+    void persist(prev, next);
   };
 
   const handleExportJson = () => {
@@ -415,7 +405,7 @@ export const KanbanBoard = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${currentBoardName.replace(/\s+/g, "-").toLowerCase()}-board.json`;
+    a.download = `${boardName.replace(/\s+/g, "-").toLowerCase()}-board.json`;
     a.addEventListener("click", () => {
       setTimeout(() => URL.revokeObjectURL(url), 100);
     });
@@ -432,25 +422,24 @@ export const KanbanBoard = ({
   };
 
   const handleAiBoardUpdate = (aiBoard: BoardData) => {
-    setBoard(aiBoard);
+    setBoard({ ...aiBoard, archivedCardIds: aiBoard.archivedCardIds ?? [] });
     setSaveError(null);
     // Backend already saved the board during the AI call — no persist() needed
   };
 
   const handleSaveBoardName = async () => {
     const name = boardNameDraft.trim();
-    if (!name || name === currentBoardName) {
+    if (!name || name === boardName) {
       setEditingBoardName(false);
-      setBoardNameDraft(currentBoardName);
+      setBoardNameDraft(boardName);
       return;
     }
     try {
       const updated = await renameBoard(boardId, name);
-      setCurrentBoardName(updated.name);
       setBoardNameDraft(updated.name);
       onBoardRenamed(updated);
     } catch {
-      setBoardNameDraft(currentBoardName);
+      setBoardNameDraft(boardName);
     } finally {
       setEditingBoardName(false);
     }
@@ -470,10 +459,7 @@ export const KanbanBoard = ({
 
   return (
     <div className="relative">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-0 top-0 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.25)_0%,_rgba(32,157,215,0.05)_55%,_transparent_70%)]" />
-        <div className="absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.18)_0%,_rgba(117,57,145,0.05)_55%,_transparent_75%)]" />
-      </div>
+      <PageBackground />
 
       <main className="mx-auto flex flex-col gap-10 px-6 pb-16 pt-12">
         {saveError && (
@@ -514,7 +500,7 @@ export const KanbanBoard = ({
                     if (e.key === "Enter") void handleSaveBoardName();
                     if (e.key === "Escape") {
                       setEditingBoardName(false);
-                      setBoardNameDraft(currentBoardName);
+                      setBoardNameDraft(boardName);
                     }
                   }}
                   className="mt-3 w-full max-w-sm rounded-xl border border-[var(--primary-blue)] bg-[var(--surface)] px-3 py-1 font-display text-4xl font-semibold text-[var(--navy-dark)] outline-none focus:ring-2 focus:ring-[var(--primary-blue)]/30"
@@ -525,7 +511,7 @@ export const KanbanBoard = ({
                   title="Click to rename"
                   onClick={() => setEditingBoardName(true)}
                 >
-                  {currentBoardName}
+                  {boardName}
                 </h1>
               )}
               {editingDescription ? (
@@ -710,9 +696,9 @@ export const KanbanBoard = ({
           <AISidebar boardId={boardId} onBoardUpdate={handleAiBoardUpdate} />
         </div>
 
-        {(board.archivedCardIds ?? []).length > 0 && (
+        {board.archivedCardIds.length > 0 && (
           <ArchivePanel
-            archivedCards={(board.archivedCardIds ?? []).flatMap((id) => {
+            archivedCards={board.archivedCardIds.flatMap((id) => {
               const card = board.cards[id];
               return card ? [card] : [];
             })}

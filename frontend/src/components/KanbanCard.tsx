@@ -3,7 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
 import type { Card, ChecklistItem, Comment, Priority } from "@/lib/kanban";
-import { CARD_COLORS, LABEL_OPTIONS, createId } from "@/lib/kanban";
+import { CARD_COLORS, LABEL_OPTIONS, PRIORITY_OPTIONS, createId } from "@/lib/kanban";
 
 type ColumnOption = { id: string; title: string };
 
@@ -40,21 +40,6 @@ type KanbanCardProps = {
   ) => void;
 };
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; color: string }[] = [
-  { value: "low",      label: "Low",      color: "bg-green-100 text-green-700 border-green-300" },
-  { value: "medium",   label: "Medium",   color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  { value: "high",     label: "High",     color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "critical", label: "Critical", color: "bg-red-100 text-red-700 border-red-300" },
-];
-
-const priorityStyle = (p: Priority): string => {
-  switch (p) {
-    case "low":      return "bg-green-100 text-green-700";
-    case "medium":   return "bg-yellow-100 text-yellow-700";
-    case "high":     return "bg-orange-100 text-orange-700";
-    case "critical": return "bg-red-100 text-red-700";
-  }
-};
 
 const formatDueDate = (dateStr: string): { text: string; overdue: boolean; soon: boolean } => {
   const due = new Date(dateStr);
@@ -435,7 +420,7 @@ export const KanbanCard = ({ card, otherColumns, searchQuery = "", onArchive, on
                   <span
                     className={clsx(
                       "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                      priorityStyle(card.priority)
+                      PRIORITY_OPTIONS.find((o) => o.value === card.priority)?.badgeColor
                     )}
                   >
                     {card.priority}

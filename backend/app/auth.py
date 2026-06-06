@@ -82,11 +82,8 @@ def logout(request: Request) -> dict[str, bool]:
 
 
 @router.get("/me")
-def me(request: Request) -> dict[str, str]:
-    user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return {"username": user}
+def me(username: str = Depends(get_current_user)) -> dict[str, str]:
+    return {"username": username}
 
 
 @router.patch("/password")

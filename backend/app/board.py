@@ -110,13 +110,19 @@ def _get_user_id(db: sqlite3.Connection, username: str) -> int:
     return row["id"]
 
 
-def _verify_board_ownership(db: sqlite3.Connection, board_id: int, user_id: int) -> None:
+def _get_owned_board(db: sqlite3.Connection, board_id: int, username: str) -> int:
+    """Verify user owns the board in one query; return user_id. Raises 404 if not found."""
     row = db.execute(
-        "SELECT 1 FROM boards WHERE id = ? AND user_id = ?",
-        [board_id, user_id],
+        """
+        SELECT u.id FROM boards b
+        JOIN users u ON b.user_id = u.id
+        WHERE b.id = ? AND u.username = ?
+        """,
+        [board_id, username],
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Board not found")
+    return row[0]
 
 
 def fetch_board_content(db: sqlite3.Connection, board_id: int) -> str:
@@ -180,8 +186,7 @@ def get_board(
     current_user: str = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> BoardData:
-    user_id = _get_user_id(db, current_user)
-    _verify_board_ownership(db, board_id, user_id)
+    _get_owned_board(db, board_id, current_user)
     return BoardData.model_validate_json(fetch_board_content(db, board_id))
 
 
@@ -192,8 +197,7 @@ def update_board(
     current_user: str = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> BoardData:
-    user_id = _get_user_id(db, current_user)
-    _verify_board_ownership(db, board_id, user_id)
+    _get_owned_board(db, board_id, current_user)
     save_board_content(db, board_id, body.model_dump_json())
     return body
 
@@ -205,8 +209,7 @@ def rename_board(
     current_user: str = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> BoardSummary:
-    user_id = _get_user_id(db, current_user)
-    _verify_board_ownership(db, board_id, user_id)
+    _get_owned_board(db, board_id, current_user)
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Board name cannot be empty")
@@ -227,8 +230,7 @@ def delete_board(
     current_user: str = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> None:
-    user_id = _get_user_id(db, current_user)
-    _verify_board_ownership(db, board_id, user_id)
+    user_id = _get_owned_board(db, board_id, current_user)
     count = db.execute(
         "SELECT COUNT(*) FROM boards WHERE user_id = ?", [user_id]
     ).fetchone()[0]

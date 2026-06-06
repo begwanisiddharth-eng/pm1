@@ -1,4 +1,5 @@
 import type { BoardData } from "@/lib/kanban";
+import { isOverdue } from "@/lib/kanban";
 
 type BoardStatsProps = {
   board: BoardData;
@@ -9,19 +10,14 @@ export const BoardStats = ({ board }: BoardStatsProps) => {
   const cards = Object.values(board.cards).filter((c) => !archivedIds.has(c.id));
   const total = cards.length;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const overdue = cards.filter((card) => {
-    if (!card.due_date) return false;
-    const due = new Date(card.due_date);
-    due.setHours(0, 0, 0, 0);
-    return due < today;
-  }).length;
-
-  const allItems = cards.flatMap((card) => card.checklist ?? []);
-  const totalItems = allItems.length;
-  const doneItems = allItems.filter((item) => item.done).length;
+  let overdue = 0, totalItems = 0, doneItems = 0;
+  for (const card of cards) {
+    if (isOverdue(card)) overdue++;
+    for (const item of card.checklist ?? []) {
+      totalItems++;
+      if (item.done) doneItems++;
+    }
+  }
 
   if (total === 0) return null;
 

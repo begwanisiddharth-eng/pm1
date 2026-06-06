@@ -1,5 +1,19 @@
 export type Priority = "low" | "medium" | "high" | "critical";
 
+export type PriorityOption = {
+  value: Priority;
+  label: string;
+  color: string;      // bg + text + border, for selector buttons
+  badgeColor: string; // bg + text only, for display badges
+};
+
+export const PRIORITY_OPTIONS: PriorityOption[] = [
+  { value: "low",      label: "Low",      color: "bg-green-100 text-green-700 border-green-300",    badgeColor: "bg-green-100 text-green-700" },
+  { value: "medium",   label: "Medium",   color: "bg-yellow-100 text-yellow-700 border-yellow-300", badgeColor: "bg-yellow-100 text-yellow-700" },
+  { value: "high",     label: "High",     color: "bg-orange-100 text-orange-700 border-orange-300", badgeColor: "bg-orange-100 text-orange-700" },
+  { value: "critical", label: "Critical", color: "bg-red-100 text-red-700 border-red-300",           badgeColor: "bg-red-100 text-red-700" },
+];
+
 export type ChecklistItem = {
   id: string;
   text: string;
@@ -55,6 +69,15 @@ export type CardFilter = {
   overdueOnly: boolean;
 };
 
+export const isOverdue = (card: Card): boolean => {
+  if (!card.due_date) return false;
+  const due = new Date(card.due_date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
+};
+
 export const matchesFilter = (card: Card, filter: CardFilter): boolean => {
   if (filter.search) {
     const q = filter.search.toLowerCase();
@@ -68,13 +91,8 @@ export const matchesFilter = (card: Card, filter: CardFilter): boolean => {
   if (filter.priority && card.priority !== filter.priority) {
     return false;
   }
-  if (filter.overdueOnly) {
-    if (!card.due_date) return false;
-    const due = new Date(card.due_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    due.setHours(0, 0, 0, 0);
-    if (due >= today) return false;
+  if (filter.overdueOnly && !isOverdue(card)) {
+    return false;
   }
   return true;
 };

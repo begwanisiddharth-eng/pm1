@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createBoard, type BoardSummary } from "@/lib/api";
 import { timeAgo } from "@/lib/kanban";
+import { PageBackground } from "@/components/PageBackground";
 
 type Props = {
   boards: BoardSummary[];
@@ -43,10 +44,7 @@ export const BoardSelector = ({
 
   return (
     <div className="relative min-h-screen">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-0 top-0 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.25)_0%,_rgba(32,157,215,0.05)_55%,_transparent_70%)]" />
-        <div className="absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.18)_0%,_rgba(117,57,145,0.05)_55%,_transparent_75%)]" />
-      </div>
+      <PageBackground />
 
       <main className="relative mx-auto max-w-2xl px-6 pb-16 pt-12">
         <header className="mb-8 flex items-center justify-between">

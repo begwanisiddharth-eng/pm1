@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 from app.ai import AIChatResponse
 from app.ai import chat as ai_chat
 from app.auth import get_current_user
-from app.board import BoardData, fetch_board_content, save_board_content, _get_user_id, _verify_board_ownership
+from app.board import BoardData, fetch_board_content, save_board_content, _get_owned_board
 from app.database import get_db
 
 router = APIRouter(prefix="/api/ai")
@@ -50,8 +50,7 @@ def ai_chat_endpoint(
     current_user: str = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> ChatResponse:
-    user_id = _get_user_id(db, current_user)
-    _verify_board_ownership(db, body.board_id, user_id)
+    _get_owned_board(db, body.board_id, current_user)
 
     board_json = fetch_board_content(db, body.board_id)
     # Build an AI-visible board that excludes archived cards
@@ -88,20 +87,19 @@ def ai_chat_endpoint(
 
             cards_dict: dict[str, dict] = {}
             for ai_card in ai_response.board.cards:
-                card_dict = ai_card.model_dump()
                 existing = existing_cards.get(ai_card.id)
                 if existing:
-                    card_dict["priority"] = existing.priority
-                    card_dict["due_date"] = existing.due_date
-                    card_dict["labels"] = existing.labels
-                    card_dict["checklist"] = [item.model_dump() for item in existing.checklist]
-                    card_dict["comments"] = [c.model_dump() for c in existing.comments]
-                    card_dict["color"] = existing.color
+                    # Preserve all metadata; AI only changes title and details
+                    card_dict = existing.model_dump()
+                    card_dict["title"] = ai_card.title
+                    card_dict["details"] = ai_card.details
+                else:
+                    card_dict = ai_card.model_dump()
                 cards_dict[ai_card.id] = card_dict
 
             # Carry archived cards back into the merged board
             for aid in existing_board_full.archivedCardIds:
-                if aid in existing_cards and aid not in cards_dict:
+                if aid in existing_cards:
                     cards_dict[aid] = existing_cards[aid].model_dump()
 
             board_dict = {

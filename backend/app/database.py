@@ -48,7 +48,7 @@ def verify_password(password: str, stored_hash: str) -> bool:
         _, alg, iterations, salt, key_hex = stored_hash.split(":")
         key = hashlib.pbkdf2_hmac(alg, password.encode(), salt.encode(), int(iterations))
         return hmac.compare_digest(key.hex(), key_hex)
-    except Exception:
+    except (ValueError, TypeError):
         return False
 
 
@@ -87,10 +87,11 @@ def init_db(path: Path = DB_PATH) -> None:
     ).fetchone()
     if row is None:
         ph = hash_password("password")
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO users (username, password_hash) VALUES (?, ?)",
             ["user", ph],
         )
+        user_id = cur.lastrowid
     elif row[1] == "":
         # Upgrade legacy empty password_hash
         ph = hash_password("password")
@@ -98,10 +99,9 @@ def init_db(path: Path = DB_PATH) -> None:
             "UPDATE users SET password_hash = ? WHERE username = 'user'",
             [ph],
         )
-
-    user_id = conn.execute(
-        "SELECT id FROM users WHERE username = 'user'"
-    ).fetchone()[0]
+        user_id = row[0]
+    else:
+        user_id = row[0]
 
     board_exists = conn.execute(
         "SELECT 1 FROM boards WHERE user_id = ?", [user_id]
