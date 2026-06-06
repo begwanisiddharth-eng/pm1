@@ -142,11 +142,9 @@ export const KanbanCard = ({ card, otherColumns, searchQuery = "", onArchive, on
   const checklist = card.checklist ?? [];
   const checklistDone = checklist.filter((i) => i.done).length;
   const commentCount = (card.comments ?? []).length;
-  const shadowClass = isDragging
-    ? "shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
-    : dueDateInfo?.overdue
-      ? "shadow-[0_12px_24px_rgba(3,33,71,0.08),inset_3px_0_0_#f87171]"
-      : "shadow-[0_12px_24px_rgba(3,33,71,0.08)]";
+  let shadowClass = "shadow-[0_12px_24px_rgba(3,33,71,0.08)]";
+  if (isDragging) shadowClass = "shadow-[0_18px_32px_rgba(3,33,71,0.16)]";
+  else if (dueDateInfo?.overdue) shadowClass = "shadow-[0_12px_24px_rgba(3,33,71,0.08),inset_3px_0_0_#f87171]";
 
   return (
     <article
@@ -430,11 +428,9 @@ export const KanbanCard = ({ card, otherColumns, searchQuery = "", onArchive, on
                   <span
                     className={clsx(
                       "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                      dueDateInfo.overdue
-                        ? "bg-red-100 text-red-700"
-                        : dueDateInfo.soon
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-[var(--surface)] text-[var(--gray-text)]"
+                      dueDateInfo.overdue && "bg-red-100 text-red-700",
+                      !dueDateInfo.overdue && dueDateInfo.soon && "bg-yellow-100 text-yellow-700",
+                      !dueDateInfo.overdue && !dueDateInfo.soon && "bg-[var(--surface)] text-[var(--gray-text)]"
                     )}
                   >
                     {dueDateInfo.overdue && "Overdue · "}

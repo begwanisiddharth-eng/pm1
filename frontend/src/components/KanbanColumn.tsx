@@ -55,7 +55,8 @@ export const KanbanColumn = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editingWipLimit, setEditingWipLimit] = useState(false);
-  const [wipDraft, setWipDraft] = useState<string>(column.wipLimit != null ? String(column.wipLimit) : "");
+  const wipLimitText = column.wipLimit != null ? String(column.wipLimit) : "";
+  const [wipDraft, setWipDraft] = useState<string>(wipLimitText);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -71,11 +72,10 @@ export const KanbanColumn = ({
   const isOverLimit = wipLimit !== null && cards.length > wipLimit;
   const isDisabledByWip = isAtLimit || isOverLimit;
 
-  const badgeClass = isOverLimit
-    ? "rounded-full px-2 py-0.5 text-xs font-semibold bg-red-50 text-red-600"
-    : isAtLimit
-    ? "rounded-full px-2 py-0.5 text-xs font-semibold bg-orange-50 text-orange-600"
-    : "rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs font-semibold text-[var(--gray-text)]";
+  const badgeBase = "rounded-full px-2 py-0.5 text-xs font-semibold";
+  let badgeClass = `${badgeBase} bg-[var(--surface)] text-[var(--gray-text)]`;
+  if (isOverLimit) badgeClass = `${badgeBase} bg-red-50 text-red-600`;
+  else if (isAtLimit) badgeClass = `${badgeBase} bg-orange-50 text-orange-600`;
 
   useEffect(() => {
     if (!isEditingTitle) {
@@ -99,7 +99,7 @@ export const KanbanColumn = ({
     } else if (!isNaN(parsed) && parsed > 0) {
       onSetWipLimit(column.id, parsed);
     } else {
-      setWipDraft(column.wipLimit != null ? String(column.wipLimit) : "");
+      setWipDraft(wipLimitText);
     }
     setEditingWipLimit(false);
   };
@@ -173,7 +173,7 @@ export const KanbanColumn = ({
                 onBlur={commitWipLimit}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commitWipLimit();
-                  if (e.key === "Escape") { setWipDraft(column.wipLimit != null ? String(column.wipLimit) : ""); setEditingWipLimit(false); }
+                  if (e.key === "Escape") { setWipDraft(wipLimitText); setEditingWipLimit(false); }
                 }}
                 placeholder="limit"
                 autoFocus
@@ -183,7 +183,7 @@ export const KanbanColumn = ({
             ) : (
               <button
                 type="button"
-                onClick={() => { setWipDraft(column.wipLimit != null ? String(column.wipLimit) : ""); setEditingWipLimit(true); }}
+                onClick={() => { setWipDraft(wipLimitText); setEditingWipLimit(true); }}
                 aria-label={wipLimit !== null ? `Edit WIP limit (currently ${wipLimit})` : "Set WIP limit"}
                 className="rounded px-1 py-0.5 text-[10px] text-[var(--gray-text)] hover:text-[var(--primary-blue)]"
               >

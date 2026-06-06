@@ -12,7 +12,7 @@ A local Project Management app: multiple Kanban boards per user, drag-and-drop c
 
 ```powershell
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000  # start server
-uv run pytest                                               # run all tests (74)
+uv run pytest                                               # run all tests (101)
 uv run pytest tests/test_board.py                          # run a single test file
 uv run pytest -k test_name                                  # run tests matching a name pattern
 ```
@@ -20,7 +20,7 @@ uv run pytest -k test_name                                  # run tests matching
 ### Frontend (run from `frontend/`)
 
 ```powershell
-npm run test:unit          # Vitest unit tests (60)
+npm run test:unit          # Vitest unit tests (85)
 npm run test:unit:watch    # Vitest in watch mode
 npm run test:e2e           # Playwright e2e (builds first)
 npm run test:all           # both unit and e2e
@@ -148,6 +148,9 @@ class BoardData(BaseModel):
     # every card in cards is either active (in a column) or archived (in archivedCardIds),
     # every archivedCardId exists in cards.
 ```
+
+Internal helpers:
+- `_board_summary(db, board_id) -> BoardSummary` — re-queries the row and builds a `BoardSummary`; shared by `create_board` and `rename_board` to avoid duplication.
 
 Helper functions used by `ai_router.py`:
 - `fetch_board_content(db, board_id) -> str` — fetches the raw JSON string from `boards.content`.
@@ -285,6 +288,9 @@ void persist(prev, next);
 // persist: on success → setLastUpdated(new Date().toISOString())
 //          on failure → setBoard(prev) + setSaveError(...)
 ```
+
+**Local helpers:**
+- `cardsForIds(ids: string[]) -> Card[]` — maps an array of card IDs to their `Card` objects from `board.cards`; used for both the column render and archive panel to avoid duplicating the `flatMap` lookup.
 
 **Key handlers:**
 - `handleRenameColumn(columnId, title)`

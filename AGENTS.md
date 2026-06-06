@@ -33,6 +33,8 @@ Passwords are stored as `pbkdf2:sha256:100000:<hex-salt>:<hex-key>` using Python
   - `PUT /api/boards/{id}` — replace the full board content with a validated `BoardData`; updates `updated_at`.
   - `PATCH /api/boards/{id}/name` — rename the board.
   - `DELETE /api/boards/{id}` — delete the board; blocked (HTTP 400) if it is the user's only board.
+
+`POST /api/boards` and `PATCH /api/boards/{id}/name` both return a `BoardSummary` built by the shared internal helper `_board_summary(db, board_id)`, which re-queries the row after the write.
 - **Board description**: An optional plain-text description stored in `BoardData.description`. Edited inline below the board title (click to edit, Enter saves, Escape cancels).
 - **Last-updated timestamp**: The board header shows a human-readable relative timestamp (e.g. "3 minutes ago", "2 days ago") using the `timeAgo()` utility. The timestamp updates optimistically after every successful save.
 - **Board selector timestamps**: The board selector list also uses `timeAgo()` for each board's `updated_at`.
@@ -204,12 +206,12 @@ void persist(prev, next); // async save
 
 ## Test Coverage
 
-**Backend** (`uv run pytest` from `backend/`): **74 tests** across:
+**Backend** (`uv run pytest` from `backend/`): **101 tests** across:
 - `tests/test_auth.py` — registration validation, login, logout, session persistence, change password
 - `tests/test_board.py` — board CRUD, card field round-trips (priority, due_date, labels, checklist, comments, color, wipLimit, collapsed), archive logic, description, board ownership
 - `tests/test_ai.py` — AI endpoint auth guard, board ownership guard, metadata merge
 
-**Frontend** (`npm run test:unit` from `frontend/`): **60 tests** across:
+**Frontend** (`npm run test:unit` from `frontend/`): **85 tests** across:
 - `lib/kanban.test.ts` — `moveCard`, `moveColumn`, `matchesFilter`, `timeAgo` unit tests
 - `components/LoginForm.test.tsx` — sign-in and register flows
 - `components/AISidebar.test.tsx` — send message, AI response rendering, board update callback, clear chat

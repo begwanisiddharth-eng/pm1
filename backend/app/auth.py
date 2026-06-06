@@ -52,27 +52,26 @@ def register(
     body: RegisterRequest,
     db: sqlite3.Connection = Depends(get_db),
 ) -> dict[str, str]:
-    if len(body.username.strip()) < 3:
+    username = body.username.strip()
+    if len(username) < 3:
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     existing = db.execute(
-        "SELECT 1 FROM users WHERE username = ?", [body.username.strip()]
+        "SELECT 1 FROM users WHERE username = ?", [username]
     ).fetchone()
     if existing:
         raise HTTPException(status_code=409, detail="Username already taken")
-    password_hash = hash_password(body.password)
     cursor = db.execute(
         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-        [body.username.strip(), password_hash],
+        [username, hash_password(body.password)],
     )
-    user_id = cursor.lastrowid
     db.execute(
         "INSERT INTO boards (user_id, name, content) VALUES (?, ?, ?)",
-        [user_id, "My Board", json.dumps(_EMPTY_BOARD)],
+        [cursor.lastrowid, "My Board", json.dumps(_EMPTY_BOARD)],
     )
     db.commit()
-    return {"username": body.username.strip()}
+    return {"username": username}
 
 
 @router.post("/logout")

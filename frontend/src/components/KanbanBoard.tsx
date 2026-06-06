@@ -49,10 +49,7 @@ export const KanbanBoard = ({
   onBoardRenamed,
   onBoardDeleted,
 }: KanbanBoardProps) => {
-  const [board, setBoard] = useState<BoardData>({
-    ...initialBoard,
-    archivedCardIds: initialBoard.archivedCardIds ?? [],
-  });
+  const [board, setBoard] = useState<BoardData>(initialBoard);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [editingBoardName, setEditingBoardName] = useState(false);
@@ -91,8 +88,6 @@ export const KanbanBoard = ({
       activationConstraint: { distance: 6 },
     })
   );
-
-  const cardsById = board.cards;
 
   const persist = async (prev: BoardData, next: BoardData) => {
     try {
@@ -391,10 +386,10 @@ export const KanbanBoard = ({
     e.target.value = "";
   };
 
-  const handleConfirmImport = async () => {
+  const handleConfirmImport = () => {
     if (!confirmImport) return;
     const prev = board;
-    const next = { ...confirmImport, archivedCardIds: confirmImport.archivedCardIds ?? [] };
+    const next = confirmImport;
     setBoard(next);
     setConfirmImport(null);
     void persist(prev, next);
@@ -422,7 +417,7 @@ export const KanbanBoard = ({
   };
 
   const handleAiBoardUpdate = (aiBoard: BoardData) => {
-    setBoard({ ...aiBoard, archivedCardIds: aiBoard.archivedCardIds ?? [] });
+    setBoard(aiBoard);
     setSaveError(null);
     // Backend already saved the board during the AI call — no persist() needed
   };
@@ -455,7 +450,13 @@ export const KanbanBoard = ({
     }
   };
 
-  const activeCard = activeCardId ? cardsById[activeCardId] : null;
+  const activeCard = activeCardId ? board.cards[activeCardId] : null;
+
+  const cardsForIds = (ids: string[]) =>
+    ids.flatMap((id) => {
+      const card = board.cards[id];
+      return card ? [card] : [];
+    });
 
   return (
     <div className="relative">
@@ -661,10 +662,7 @@ export const KanbanBoard = ({
                     <div key={column.id} className="min-w-[220px] flex-1">
                       <KanbanColumn
                         column={column}
-                        cards={column.cardIds.flatMap((cardId) => {
-                          const card = board.cards[cardId];
-                          return card ? [card] : [];
-                        })}
+                        cards={cardsForIds(column.cardIds)}
                         otherColumns={board.columns
                           .filter((c) => c.id !== column.id)
                           .map((c) => ({ id: c.id, title: c.title }))}
@@ -698,10 +696,7 @@ export const KanbanBoard = ({
 
         {board.archivedCardIds.length > 0 && (
           <ArchivePanel
-            archivedCards={board.archivedCardIds.flatMap((id) => {
-              const card = board.cards[id];
-              return card ? [card] : [];
-            })}
+            archivedCards={cardsForIds(board.archivedCardIds)}
             onRestore={handleRestoreCard}
             onDelete={handleDeleteArchivedCard}
           />
@@ -720,7 +715,7 @@ export const KanbanBoard = ({
             <div className="mt-5 flex gap-3">
               <button
                 type="button"
-                onClick={() => void handleConfirmImport()}
+                onClick={handleConfirmImport}
                 className="rounded-xl bg-[var(--primary-blue)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 Replace board

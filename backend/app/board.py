@@ -68,13 +68,9 @@ class BoardData(BaseModel):
 
     @model_validator(mode="after")
     def check_card_refs(self) -> "BoardData":
-        # Active cards referenced by columns
         referenced = {cid for col in self.columns for cid in col.cardIds}
-        # All cards defined (active + archived)
         defined = set(self.cards.keys())
-        # Archived card IDs must exist in cards dict
         archived_ids = set(self.archivedCardIds)
-        # Active cards = defined minus archived
         active_defined = defined - archived_ids
         if referenced != active_defined:
             dangling = referenced - active_defined
@@ -82,7 +78,6 @@ class BoardData(BaseModel):
             raise ValueError(
                 f"cardIds/cards mismatch: dangling={dangling}, orphaned={orphaned}"
             )
-        # Archived IDs must exist in cards
         missing_archived = archived_ids - defined
         if missing_archived:
             raise ValueError(f"archivedCardIds references missing cards: {missing_archived}")
@@ -123,6 +118,13 @@ def _get_owned_board(db: sqlite3.Connection, board_id: int, username: str) -> in
     if not row:
         raise HTTPException(status_code=404, detail="Board not found")
     return row[0]
+
+
+def _board_summary(db: sqlite3.Connection, board_id: int) -> BoardSummary:
+    row = db.execute(
+        "SELECT id, name, updated_at FROM boards WHERE id = ?", [board_id]
+    ).fetchone()
+    return BoardSummary(id=row["id"], name=row["name"], updated_at=row["updated_at"])
 
 
 def fetch_board_content(db: sqlite3.Connection, board_id: int) -> str:
@@ -173,11 +175,7 @@ def create_board(
         [user_id, name, json.dumps(_EMPTY_BOARD)],
     )
     db.commit()
-    board_id = cursor.lastrowid
-    row = db.execute(
-        "SELECT id, name, updated_at FROM boards WHERE id = ?", [board_id]
-    ).fetchone()
-    return BoardSummary(id=row["id"], name=row["name"], updated_at=row["updated_at"])
+    return _board_summary(db, cursor.lastrowid)
 
 
 @router.get("/boards/{board_id}")
@@ -218,10 +216,7 @@ def rename_board(
         [name, board_id],
     )
     db.commit()
-    row = db.execute(
-        "SELECT id, name, updated_at FROM boards WHERE id = ?", [board_id]
-    ).fetchone()
-    return BoardSummary(id=row["id"], name=row["name"], updated_at=row["updated_at"])
+    return _board_summary(db, board_id)
 
 
 @router.delete("/boards/{board_id}", status_code=204)
