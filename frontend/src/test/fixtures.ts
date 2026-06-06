@@ -18,4 +18,5 @@ export const seedBoard: BoardData = {
     "card-7": { id: "card-7", title: "Ship marketing page",     details: "Final copy approved and asset pack delivered." },
     "card-8": { id: "card-8", title: "Close onboarding sprint", details: "Document release notes and share internally." },
   },
+  archivedCardIds: [],
 };

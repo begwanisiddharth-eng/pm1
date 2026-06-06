@@ -109,7 +109,7 @@ export type BoardData = {
   columns: Column[];
   cards: Record<string, Card>;
   description?: string | null;
-  archivedCardIds?: string[];
+  archivedCardIds: string[];
 };
 
 const isColumnId = (columns: Column[], id: string) =>

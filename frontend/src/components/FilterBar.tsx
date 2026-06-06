@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { CardFilter } from "@/lib/kanban";
+import type { CardFilter, Priority } from "@/lib/kanban";
 import { PRIORITY_OPTIONS } from "@/lib/kanban";
 
 type FilterBarProps = {

@@ -67,7 +67,8 @@ export async function createBoard(name: string): Promise<BoardSummary> {
 export async function getBoard(boardId: number): Promise<BoardData> {
   const res = await fetch(`/api/boards/${boardId}`);
   if (!res.ok) throw new Error("Failed to load board");
-  return res.json();
+  const data = await res.json();
+  return { ...data, archivedCardIds: data.archivedCardIds ?? [] };
 }
 
 export async function saveBoard(boardId: number, board: BoardData): Promise<void> {
@@ -118,5 +119,9 @@ export async function chatWithBoard(
     body: JSON.stringify({ message, history, board_id: boardId }),
   });
   if (!res.ok) throw new Error("AI request failed");
-  return res.json();
+  const data: ChatResponse = await res.json();
+  if (data.board) {
+    data.board = { ...data.board, archivedCardIds: data.board.archivedCardIds ?? [] };
+  }
+  return data;
 }
