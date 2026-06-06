@@ -18,7 +18,14 @@ const SEED_BOARD = {
     "card-7": { id: "card-7", title: "Ship marketing page",     details: "Final copy approved and asset pack delivered." },
     "card-8": { id: "card-8", title: "Close onboarding sprint", details: "Document release notes and share internally." },
   },
+  archivedCardIds: [],
 };
+
+async function resetBoard(page: import("@playwright/test").Page) {
+  const res = await page.request.get("/api/boards");
+  const boards = (await res.json()) as Array<{ id: number }>;
+  await page.request.put(`/api/boards/${boards[0].id}`, { data: SEED_BOARD });
+}
 
 // ── Auth tests ─────────────────────────────────────────────────────────────
 
@@ -43,7 +50,7 @@ test("signs in with correct credentials and shows the board", async ({ page }) =
   await page.getByLabel("Username").fill("user");
   await page.getByLabel("Password").fill("password");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
   await expect(page.locator('[data-testid^="column-"]')).toHaveCount(5);
 });
 
@@ -52,7 +59,8 @@ test("signs out and returns to the login screen", async ({ page }) => {
     data: { username: "user", password: "password" },
   });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
+  await page.getByRole("button", { name: "Profile menu" }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
@@ -64,9 +72,9 @@ test.describe("Board", () => {
     await page.request.post("/api/auth/login", {
       data: { username: "user", password: "password" },
     });
-    await page.request.put("/api/board", { data: SEED_BOARD });
+    await resetBoard(page);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
   });
 
   test("loads the kanban board with five columns", async ({ page }) => {
@@ -89,11 +97,11 @@ test.describe("Board", () => {
     await expect(firstColumn.getByText("New e2e card")).toBeVisible();
   });
 
-  test("deletes a card from a column", async ({ page }) => {
+  test("archives a card from a column", async ({ page }) => {
     const backlogColumn = page.getByTestId("column-col-backlog");
     await expect(backlogColumn.getByTestId("card-card-1")).toBeVisible();
     await backlogColumn
-      .getByRole("button", { name: "Delete Align roadmap themes", exact: true })
+      .getByRole("button", { name: "Archive Align roadmap themes", exact: true })
       .click();
     await expect(backlogColumn.getByTestId("card-card-1")).not.toBeVisible();
   });
@@ -137,9 +145,9 @@ test.describe("Persistence", () => {
     await page.request.post("/api/auth/login", {
       data: { username: "user", password: "password" },
     });
-    await page.request.put("/api/board", { data: SEED_BOARD });
+    await resetBoard(page);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
   });
 
   test("persists column rename after reload", async ({ page }) => {
@@ -147,14 +155,14 @@ test.describe("Persistence", () => {
     const titleInput = firstColumn.getByLabel("Column title");
 
     const saveResponse = page.waitForResponse(
-      (r) => r.url().includes("/api/board") && r.request().method() === "PUT"
+      (r) => r.url().includes("/api/boards/") && r.request().method() === "PUT"
     );
     await titleInput.fill("Renamed");
     await titleInput.press("Tab");
     await saveResponse;
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
     await expect(
       page.locator('[data-testid^="column-"]').first().getByLabel("Column title")
     ).toHaveValue("Renamed");
@@ -167,31 +175,31 @@ test.describe("Persistence", () => {
     await firstColumn.getByPlaceholder("Details").fill("Details here.");
 
     const saveResponse = page.waitForResponse(
-      (r) => r.url().includes("/api/board") && r.request().method() === "PUT"
+      (r) => r.url().includes("/api/boards/") && r.request().method() === "PUT"
     );
     await firstColumn.getByRole("button", { name: /^add card$/i }).click();
     await saveResponse;
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
     await expect(
       page.locator('[data-testid^="column-"]').first().getByText("Persistent card")
     ).toBeVisible();
   });
 
-  test("persists card deletion after reload", async ({ page }) => {
+  test("persists card archival after reload", async ({ page }) => {
     const backlogColumn = page.getByTestId("column-col-backlog");
 
     const saveResponse = page.waitForResponse(
-      (r) => r.url().includes("/api/board") && r.request().method() === "PUT"
+      (r) => r.url().includes("/api/boards/") && r.request().method() === "PUT"
     );
     await backlogColumn
-      .getByRole("button", { name: "Delete Align roadmap themes", exact: true })
+      .getByRole("button", { name: "Archive Align roadmap themes", exact: true })
       .click();
     await saveResponse;
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
     await expect(backlogColumn.getByTestId("card-card-1")).not.toBeVisible();
   });
 
@@ -204,13 +212,13 @@ test.describe("Persistence", () => {
     await titleInput.fill("Edited and persisted");
 
     const saveResponse = page.waitForResponse(
-      (r) => r.url().includes("/api/board") && r.request().method() === "PUT"
+      (r) => r.url().includes("/api/boards/") && r.request().method() === "PUT"
     );
     await card.getByRole("button", { name: "Save" }).click();
     await saveResponse;
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
     await expect(backlogColumn.getByText("Edited and persisted")).toBeVisible();
   });
 });
@@ -222,9 +230,9 @@ test.describe("AI Sidebar", () => {
     await page.request.post("/api/auth/login", {
       data: { username: "user", password: "password" },
     });
-    await page.request.put("/api/board", { data: SEED_BOARD });
+    await resetBoard(page);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Main Board" })).toBeVisible();
   });
 
   test("sidebar is always visible", async ({ page }) => {
@@ -252,6 +260,7 @@ test.describe("AI Sidebar", () => {
     const aiBoard = {
       columns: [{ id: "col-backlog", title: "AI Column", cardIds: [] }],
       cards: {},
+      archivedCardIds: [],
     };
     await page.route("**/api/ai/chat", async (route) => {
       await route.fulfill({
